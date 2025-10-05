@@ -1,0 +1,5 @@
+# PyInstaller
+build/
+*.spec
+__pycache__/
+.pytest_cache/
