@@ -22,10 +22,19 @@
 
 This is a simple auto-fire utility created with Python and AutoHotkey.
 
+### Features
+*   **Simple UI:** Easy configuration via a clean Tkinter interface.
+*   **AutoHotkey Powered:** Uses AutoHotkey v2 for robust, game-compatible input simulation.
+*   **Fully Configurable:** Set any trigger key, output key, and interval.
+*   **Human-like Input:** Randomizes delays to better mimic human input.
+
 ### How to Use:
 1.  First, you must have **AutoHotkey v2** installed (available from the official website `autohotkey.com`).
-2.  Run `app.py`.
+2.  Run `app.py` (or the `AutoFire.exe` from the [Releases](https://github.com/HugoLi0213/Marcoapp/releases) page).
 3.  In the UI, set your desired "Trigger key", "Output key", and "Interval".
 4.  Press "Start".
 5.  Hold down your configured trigger key to begin auto-firing.
 6.  Use "Stop" or the emergency hotkey `Ctrl+Alt+Esc` to stop.
+
+### License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
