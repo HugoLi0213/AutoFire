@@ -1,0 +1,6 @@
+{
+  "intervalMs": 50,
+  "outputKey": "e",
+  "passThrough": false,
+  "triggerKey": "`"
+}
