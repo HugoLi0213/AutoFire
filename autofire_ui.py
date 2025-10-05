@@ -1,5 +1,8 @@
 """Minimal AutoFire Tk GUI for Windows.
 
+Author: Hugo
+Last Updated: 2025-10-06
+
 Usage: ``python autofire_ui.py`` (run from an elevated command prompt if
 global keyboard hooks require administrator privileges).
 The UI lets you choose a trigger key, an output key, the repeat interval
@@ -12,17 +15,16 @@ from __future__ import annotations
 
 import json
 import sys
-import threading
-import time
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Optional
 
-import keyboard
 import tkinter as tk
 from tkinter import messagebox, ttk
 
 CONFIG_PATH = Path(__file__).with_name("autofire.json")
+AHK_SCRIPT_PATH = Path(__file__).with_name("autofire.ahk")
 MIN_INTERVAL_MS = 1
 MAX_INTERVAL_MS = 1000
 
@@ -37,7 +39,7 @@ class AutoFireConfig:
     def formatted(self) -> str:
         status = "ON" if self.pass_through else "OFF"
         return (
-            f"AutoFire: {self.trigger_key.upper()}->{self.output_key.upper()} "
+            f"AutoFire (AHK): {self.trigger_key.upper()}->{self.output_key.upper()} "
             f"@ {self.interval_ms}ms (Pass-through {status})"
         )
 
@@ -46,15 +48,7 @@ class AutoFireEngine:
     def __init__(self, status_callback: Callable[[str, AutoFireConfig], None]) -> None:
         self._config = AutoFireConfig()
         self._status_callback = status_callback
-        self._lock = threading.RLock()
-        self._stop_event = threading.Event()
-        self._running = threading.Event()
-        self._worker: Optional[threading.Thread] = None
-        self._press_handle: Optional[str] = None
-        self._release_handle: Optional[str] = None
-        self._emergency_handle: Optional[str] = None
-        self._trigger_blocked = False
-        self._register_emergency_hotkey()
+        self._ahk_process: Optional[subprocess.Popen] = None
 
     @property
     def config(self) -> AutoFireConfig:
@@ -62,183 +56,197 @@ class AutoFireEngine:
 
     @property
     def is_running(self) -> bool:
-        return self._running.is_set()
+        return self._ahk_process is not None and self._ahk_process.poll() is None
 
     def apply_config(self, config: AutoFireConfig) -> None:
-        with self._lock:
             if config == self._config:
                 return
-            was_running = self._running.is_set()
-            if was_running:
-                self.stop_loop(join=True)
             self.unbind_trigger_handlers()
             self._config = config
 
     def bind_trigger_handlers(self) -> None:
-        with self._lock:
-            self.unbind_trigger_handlers()
-            try:
-                suppress = not self._config.pass_through
-                self._press_handle = keyboard.on_press_key(
-                    self._config.trigger_key,
-                    self._handle_press,
-                    suppress=suppress,
-                )
-                self._release_handle = keyboard.on_release_key(
-                    self._config.trigger_key,
-                    self._handle_release,
-                    suppress=suppress,
-                )
-            except (ValueError, RuntimeError, OSError) as exc:
-                self._press_handle = None
-                self._release_handle = None
-                raise RuntimeError(f"Unable to register trigger '{self._config.trigger_key}': {exc}")
-            self._update_status("Stopped")
+        self.unbind_trigger_handlers()
+        try:
+            self._generate_ahk_script()
+            self._start_ahk()
+            self._update_status("Running (AHK)")
+        except Exception as exc:
+            raise RuntimeError(f"Unable to start AutoHotkey: {exc}")
 
     def unbind_trigger_handlers(self) -> None:
-        if self._press_handle is not None:
-            try:
-                keyboard.unhook(self._press_handle)
-            except (KeyError, ValueError, RuntimeError, OSError):
-                pass
-            self._press_handle = None
-        if self._release_handle is not None:
-            try:
-                keyboard.unhook(self._release_handle)
-            except (KeyError, ValueError, RuntimeError, OSError):
-                pass
-            self._release_handle = None
-
-    def start_loop(self) -> None:
-        with self._lock:
-            if self._running.is_set():
-                return
-            block_ok = True
-            if not self._config.pass_through and not self._trigger_blocked:
-                block_ok = self._block_trigger()
-            self._stop_event.clear()
-            self._running.set()
-            self._worker = threading.Thread(
-                target=self._run_loop,
-                name="AutoFireWorker",
-                daemon=True,
-            )
-            self._worker.start()
-            if block_ok:
-                self._update_status("Running")
-            else:
-                self._status_callback(
-                    "Running: Trigger not blocked - run as admin to suppress trigger",
-                    self._config,
-                )
-
-    def stop_loop(self, join: bool = True) -> None:
-        with self._lock:
-            if not self._running.is_set():
-                self._stop_event.set()
-            else:
-                self._stop_event.set()
-        worker = self._worker
-        if join and worker and worker.is_alive():
-            worker.join(timeout=0.5)
-        self._running.clear()
-        if not self._config.pass_through:
-            self._unblock_trigger()
-        self._update_status("Stopped")
+        self._stop_ahk()
 
     def shutdown(self) -> None:
-        self.stop_loop(join=True)
         self.unbind_trigger_handlers()
-        if self._emergency_handle is not None:
-            try:
-                keyboard.remove_hotkey(self._emergency_handle)
-            except (KeyError, ValueError, RuntimeError, OSError):
-                pass
-            self._emergency_handle = None
-        self._unblock_trigger()
-
-    def emergency_stop(self) -> None:
-        self.stop_loop(join=True)
-
-    def _run_loop(self) -> None:
-        interval_s = max(MIN_INTERVAL_MS / 1000.0, self._config.interval_ms / 1000.0)
-        next_tick = time.perf_counter()
-        try:
-            while not self._stop_event.is_set():
-                try:
-                    if not keyboard.is_pressed(self._config.trigger_key):
-                        break
-                except (ValueError, RuntimeError, OSError):
-                    break
-                now = time.perf_counter()
-                if now >= next_tick:
-                    try:
-                        keyboard.press_and_release(self._config.output_key)
-                    except (ValueError, RuntimeError, OSError):
-                        break
-                    next_tick += interval_s
-                    if next_tick - now > interval_s * 5:
-                        next_tick = now + interval_s
-                sleep_for = max(0.0, min(interval_s, next_tick - now))
-                if sleep_for > 0:
-                    time.sleep(sleep_for)
-        finally:
-            self._running.clear()
-            self._stop_event.set()
-            if not self._config.pass_through:
-                self._unblock_trigger()
-            self._update_status("Stopped")
-
-    def _handle_press(self, _event: keyboard.KeyboardEvent) -> None:
-        self.start_loop()
-
-    def _handle_release(self, _event: keyboard.KeyboardEvent) -> None:
-        self.stop_loop(join=False)
-
-    def _block_trigger(self) -> bool:
-        try:
-            keyboard.block_key(self._config.trigger_key)
-        except (ValueError, RuntimeError, OSError):
-            self._status_callback(
-                "Warning: Could not block trigger key - run AutoFire as administrator",
-                self._config,
-            )
-            return False
-        self._trigger_blocked = True
-        return True
-
-    def _unblock_trigger(self) -> None:
-        if not self._trigger_blocked:
-            return
-        try:
-            keyboard.unblock_key(self._config.trigger_key)
-        except (ValueError, RuntimeError, OSError):
-            pass
-        self._trigger_blocked = False
-
-    def _register_emergency_hotkey(self) -> None:
-        try:
-            self._emergency_handle = keyboard.add_hotkey(
-                "ctrl+alt+esc",
-                self.emergency_stop,
-                suppress=False,
-            )
-        except (ValueError, RuntimeError, OSError) as exc:
-            raise SystemExit(f"Unable to register emergency stop hotkey: {exc}") from exc
 
     def _update_status(self, state: str) -> None:
         self._status_callback(state, self._config)
 
+    # AutoHotkey integration -----------------------------------------------------
+    def _generate_ahk_script(self) -> None:
+        """Generate autofire.ahk script from current config."""
+        # Convert keyboard library key names to AHK key names
+        trigger_ahk = self._key_to_ahk(self._config.trigger_key)
+        output_ahk = self._key_to_ahk(self._config.output_key)
+        pass_through_str = "true" if self._config.pass_through else "false"
+        
+        script_content = f'''#Requires AutoHotkey v2.0
+; Auto-generated by AutoFire - DO NOT EDIT MANUALLY
+; This script is automatically updated when you click Start in the AutoFire UI
 
-def _normalize_key(name: str) -> str:
-    key = (name or "").strip().lower()
-    if not key:
-        raise ValueError("Key name cannot be empty")
-    try:
-        keyboard.key_to_scan_codes(key)
-    except ValueError as exc:
-        raise ValueError(f"Unknown key '{name}'") from exc
-    return key
+TriggerKey := "{trigger_ahk}"
+OutputKey := "{output_ahk}"
+IntervalMs := {self._config.interval_ms}
+PassThrough := {pass_through_str}
+
+IsRunning := false
+
+; Emergency stop hotkey (Ctrl+Alt+Esc)
+^!Esc::{{
+    if (IsRunning) {{
+        IsRunning := false
+    }}
+    ExitApp
+}}
+
+; Register trigger key hotkey
+if (PassThrough) {{
+    ; Pass-through mode: trigger key reaches the game
+    Hotkey "~$" TriggerKey, TriggerPress
+    Hotkey "~$" TriggerKey " up", TriggerRelease
+}} else {{
+    ; Block mode: trigger key is suppressed
+    Hotkey "$" TriggerKey, TriggerPress
+    Hotkey "$" TriggerKey " up", TriggerRelease
+}}
+
+TriggerPress(*) {{
+    global IsRunning
+    if (IsRunning) {{
+        return  ; Already running
+    }}
+    IsRunning := true
+    ; Start the autofire loop in a new thread so the hotkey can return
+    SetTimer AutoFireLoop, -1
+}}
+
+TriggerRelease(*) {{
+    global IsRunning
+    IsRunning := false
+}}
+
+AutoFireLoop() {{
+    global IsRunning, OutputKey, IntervalMs
+    
+    While IsRunning {{
+        ; Send the key down
+        SendInput "{{" OutputKey " down}}"
+        
+        ; Wait a random short time (15-45ms) for the "up" stroke to look more human
+        r_down_time := Random(15, 45)
+        Sleep r_down_time
+        
+        ; Send the key up
+        SendInput "{{" OutputKey " up}}"
+        
+        ; Wait for the main interval, plus a small random variation (-10ms to +20ms)
+        r_interval_variance := Random(-10, 20)
+        wait_time := IntervalMs + r_interval_variance
+        
+        ; Ensure we don't sleep for a negative or tiny amount if interval is low
+        if (wait_time < 15) {{
+            wait_time := 15
+        }}
+        Sleep wait_time
+    }}
+}}
+'''
+        AHK_SCRIPT_PATH.write_text(script_content, encoding="utf-8")
+
+    def _key_to_ahk(self, key: str) -> str:
+        """Convert keyboard library key name to AutoHotkey key name."""
+        # Common mappings
+        ahk_map = {
+            "`": "``",  # Backtick needs escaping
+            "esc": "Escape",
+            "enter": "Enter",
+            "space": "Space",
+            "tab": "Tab",
+            "backspace": "Backspace",
+            "delete": "Delete",
+            "insert": "Insert",
+            "home": "Home",
+            "end": "End",
+            "page up": "PgUp",
+            "page down": "PgDn",
+            "up": "Up",
+            "down": "Down",
+            "left": "Left",
+            "right": "Right",
+            "caps lock": "CapsLock",
+            "num lock": "NumLock",
+            "scroll lock": "ScrollLock",
+            "shift": "Shift",
+            "ctrl": "Ctrl",
+            "alt": "Alt",
+            "win": "LWin",
+        }
+        key_lower = key.lower()
+        if key_lower in ahk_map:
+            return ahk_map[key_lower]
+        # F-keys
+        if key_lower.startswith("f") and key_lower[1:].isdigit():
+            return key_lower.upper()
+        # Single character keys pass through
+        return key
+
+    def _start_ahk(self) -> None:
+        """Launch the AutoHotkey script."""
+        if not AHK_SCRIPT_PATH.exists():
+            raise RuntimeError(f"AHK script not found: {AHK_SCRIPT_PATH}")
+        
+        # Try to find AutoHotkey v2
+        ahk_paths = [
+            r"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey64.exe",
+            r"C:\\Program Files\\AutoHotkey\\v2\\AutoHotkey32.exe",
+            r"C:\\Program Files (x86)\\AutoHotkey\\v2\\AutoHotkey64.exe",
+            r"C:\\Program Files (x86)\\AutoHotkey\\v2\\AutoHotkey32.exe",
+        ]
+        
+        ahk_exe = None
+        for path in ahk_paths:
+            if Path(path).exists():
+                ahk_exe = path
+                break
+        
+        if ahk_exe is None:
+            raise RuntimeError(
+                "AutoHotkey v2 not found. Please install from https://www.autohotkey.com/"
+            )
+        
+        try:
+            self._ahk_process = subprocess.Popen(
+                [ahk_exe, str(AHK_SCRIPT_PATH)],
+                creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
+            )
+        except Exception as exc:
+            raise RuntimeError(f"Failed to launch AutoHotkey: {exc}")
+
+    def _stop_ahk(self) -> None:
+        """Stop the running AutoHotkey script."""
+        if self._ahk_process is None:
+            return
+        try:
+            self._ahk_process.terminate()
+            self._ahk_process.wait(timeout=2)
+        except Exception:
+            try:
+                self._ahk_process.kill()
+            except Exception:
+                pass
+        self._ahk_process = None
+
+
 
 
 def load_config() -> AutoFireConfig:
@@ -255,8 +263,8 @@ def load_config() -> AutoFireConfig:
     interval = raw.get("intervalMs", AutoFireConfig.interval_ms)
     pass_through = raw.get("passThrough", AutoFireConfig.pass_through)
     return AutoFireConfig(
-        trigger_key=_normalize_key(trigger),
-        output_key=_normalize_key(output),
+        trigger_key=str(trigger).strip().lower() if trigger else "e",
+        output_key=str(output).strip().lower() if output else "r",
         interval_ms=int(max(MIN_INTERVAL_MS, min(int(interval), MAX_INTERVAL_MS))),
         pass_through=bool(pass_through),
     )
@@ -283,7 +291,6 @@ class AutoFireUI:
             raise SystemExit("This script is supported on Windows only.")
 
         self.engine = AutoFireEngine(self._schedule_status_update)
-        self._capture_handle: Optional[Callable[[keyboard.KeyboardEvent], None]] = None
         self._pending_status = "Stopped"
         self._current_config = self.engine.config
 
@@ -308,13 +315,6 @@ class AutoFireUI:
         trigger_entry = ttk.Entry(trigger_row, textvariable=self.trigger_var, width=12)
         trigger_entry.pack(side=tk.LEFT, padx=6)
         self.trigger_entry = trigger_entry
-        trigger_capture = ttk.Button(
-            trigger_row,
-            text="Capture",
-            command=lambda: capture_next_key(trigger_entry),
-        )
-        trigger_capture.pack(side=tk.LEFT)
-        self.trigger_capture_button = trigger_capture
 
         output_row = ttk.Frame(container)
         output_row.pack(fill=tk.X, pady=4)
@@ -322,13 +322,6 @@ class AutoFireUI:
         output_entry = ttk.Entry(output_row, textvariable=self.output_var, width=12)
         output_entry.pack(side=tk.LEFT, padx=6)
         self.output_entry = output_entry
-        output_capture = ttk.Button(
-            output_row,
-            text="Capture",
-            command=lambda: capture_next_key(output_entry),
-        )
-        output_capture.pack(side=tk.LEFT)
-        self.output_capture_button = output_capture
 
         interval_row = ttk.Frame(container)
         interval_row.pack(fill=tk.X, pady=4)
@@ -361,6 +354,9 @@ class AutoFireUI:
 
         ttk.Label(container, textvariable=self.status_var, relief=tk.SUNKEN, padding=6).pack(fill=tk.X, pady=(8, 0))
 
+        info_text = "Author: Hugo | Last Updated: 2025-10-06"
+        ttk.Label(container, text=info_text, foreground="gray").pack(pady=(6, 0))
+
     def populate_from_config(self, config: AutoFireConfig) -> None:
         self.trigger_var.set(config.trigger_key)
         self.output_var.set(config.output_key)
@@ -377,7 +373,6 @@ class AutoFireUI:
     def on_close(self) -> None:
         stop_autofire()
         self.engine.shutdown()
-        self._cancel_capture()
         self.root.destroy()
 
     def start_autofire(self) -> None:
@@ -395,39 +390,17 @@ class AutoFireUI:
         self.status_var.set(self._format_status("Stopped", config))
 
     def stop_autofire(self) -> None:
-        self.engine.stop_loop(join=True)
         self.engine.unbind_trigger_handlers()
         self.status_var.set(self._format_status("Stopped", self.engine.config))
         self._set_button_states(running=False)
 
-    def capture_next_key(self, entry: ttk.Entry) -> None:
-        self._cancel_capture()
 
-        def handler(event: keyboard.KeyboardEvent) -> None:
-            if event.event_type != "down":
-                return
-            self._cancel_capture()
-            entry.delete(0, tk.END)
-            entry.insert(0, event.name)
-
-        self._capture_handle = handler
-        keyboard.hook(handler)
-
-    def _cancel_capture(self) -> None:
-        if self._capture_handle is None:
-            return
-        try:
-            keyboard.unhook(self._capture_handle)
-        except (KeyError, ValueError, RuntimeError, OSError):
-            pass
-        self._capture_handle = None
 
     def _build_config_from_inputs(self) -> Optional[AutoFireConfig]:
-        try:
-            trigger = _normalize_key(self.trigger_var.get())
-            output = _normalize_key(self.output_var.get())
-        except ValueError as exc:
-            messagebox.showerror("AutoFire", str(exc), parent=self.root)
+        trigger = self.trigger_var.get().strip().lower()
+        output = self.output_var.get().strip().lower()
+        if not trigger or not output:
+            messagebox.showerror("AutoFire", "Trigger and output keys cannot be empty", parent=self.root)
             return None
         try:
             interval = int(self.interval_var.get())
@@ -436,7 +409,12 @@ class AutoFireUI:
             return None
         interval = max(MIN_INTERVAL_MS, min(interval, MAX_INTERVAL_MS))
         pass_through = bool(self.pass_var.get())
-        return AutoFireConfig(trigger_key=trigger, output_key=output, interval_ms=interval, pass_through=pass_through)
+        return AutoFireConfig(
+            trigger_key=trigger,
+            output_key=output,
+            interval_ms=interval,
+            pass_through=pass_through,
+        )
 
     def _schedule_status_update(self, state: str, config: AutoFireConfig) -> None:
         self._pending_status = state
@@ -458,10 +436,10 @@ class AutoFireUI:
 
     @staticmethod
     def _format_status(state: str, config: AutoFireConfig) -> str:
-        if state == "Running":
-            suffix = "Running"
+        if state.startswith("Running"):
+            suffix = state
         elif state == "Stopped":
-            suffix = "Stopped"
+            suffix = "Stopped - Ready"
         else:
             suffix = state
         return f"{config.formatted()} [{suffix}]"
@@ -492,12 +470,6 @@ def unbind_trigger_handlers() -> None:
     if APP is None:
         raise RuntimeError("UI has not been initialized")
     APP.engine.unbind_trigger_handlers()
-
-
-def capture_next_key(field: ttk.Entry) -> None:
-    if APP is None:
-        raise RuntimeError("UI has not been initialized")
-    APP.capture_next_key(field)
 
 
 def main() -> None:
