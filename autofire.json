@@ -1,6 +1,9 @@
 {
-  "intervalMs": 100,
-  "outputKey": "e",
-  "passThrough": false,
-  "triggerKey": "`"
+  "interval_ms": 100,
+  "language": "zh_TW",
+  "output_key": "e",
+  "pass_through": false,
+  "trigger_key": "`",
+  "use_sendinput": true,
+  "window_title": "Tales Runner"
 }

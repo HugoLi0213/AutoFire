@@ -1,5 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # PyInstaller
 build/
+dist/
 *.spec
-__pycache__/
-.pytest_cache/
+
+# Config files (user-specific)
+autofire.json
+
+# OS
+.DS_Store
+Thumbs.db
