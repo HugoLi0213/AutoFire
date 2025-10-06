@@ -1,5 +1,8 @@
 # AutoFire - Keyboard Automation Tool
 
+> **⚠️ For Educational Purposes Only**  
+> This tool is provided for learning and educational purposes. Users are responsible for ensuring compliance with applicable Terms of Service and local laws.
+
 **Author:** Hugo  
 **Last Updated:** 2025-10-06
 
@@ -215,9 +218,15 @@ Contributions welcome! Please ensure:
 
 ---
 
-## 📄 License
+## 📄 License & Disclaimer
 
-For educational and personal use. Please respect game Terms of Service.
+**For Educational Purposes Only**
+
+This project is provided as-is for educational and learning purposes. The author is not responsible for any misuse or violations of Terms of Service. Users must:
+- ✅ Understand how Windows APIs work
+- ✅ Respect software Terms of Service
+- ✅ Use responsibly and ethically
+- ⚠️ Accept all risks associated with use
 
 ---
 
