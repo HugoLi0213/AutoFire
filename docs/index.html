@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AutoFire - キーボード自動化ツール。教育目的専用。">
-    <meta name="keywords" content="キーボード自動化, 入力シミュレーション, Windows API, SendInput, PostMessage">
+    <meta name="description" content="AutoFire - Windows keyboard automation tool with dual input modes. For educational purposes only.">
+    <meta name="keywords" content="keyboard automation, input simulation, Windows API, SendInput, PostMessage, DirectInput">
     <meta name="author" content="Hugo">
-    <title>AutoFire - キーボード自動化ツール | 教育目的専用</title>
+    <title>AutoFire - Keyboard Automation Tool | For Educational Purposes Only</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Noto+Serif+JP:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Traditional Japanese Header -->
+    <!-- Traditional Header -->
     <header class="jp-header">
         <div class="header-top">
             <div class="site-title-vertical">
@@ -23,21 +23,21 @@
                 <div class="site-logo">
                     <span class="logo-icon">⚡</span>
                     <h1 class="site-name">AutoFire</h1>
-                    <p class="site-subtitle">キーボード自動化ツール</p>
+                    <p class="site-subtitle">Keyboard Automation Tool</p>
                 </div>
                 <nav class="top-nav">
-                    <a href="#about" class="nav-item">■ ツールについて</a>
-                    <a href="#screenshot" class="nav-item">■ スクリーンショット</a>
-                    <a href="#features" class="nav-item">■ 機能一覧</a>
-                    <a href="#download" class="nav-item">■ ダウンロード</a>
+                    <a href="#about" class="nav-item">■ About</a>
+                    <a href="#screenshot" class="nav-item">■ Screenshot</a>
+                    <a href="#features" class="nav-item">■ Features</a>
+                    <a href="#download" class="nav-item">■ Download</a>
                     <a href="https://github.com/HugoLi0213/AutoFire" target="_blank" class="nav-item">■ GitHub</a>
                 </nav>
             </div>
         </div>
         <div class="header-banner">
             <div class="banner-text">
-                <span class="warning-badge">⚠️ 教育目的専用 ⚠️</span>
-                <span class="update-info">最終更新日: 2025年10月6日 | Version 1.0.0</span>
+                <span class="warning-badge">⚠️ For Educational Purposes Only ⚠️</span>
+                <span class="update-info">Last Updated: October 6, 2025 | Version 1.0.0</span>
             </div>
         </div>
     </header>
@@ -48,21 +48,21 @@
             <div class="welcome-box">
                 <h2 class="section-title">
                     <span class="title-decoration">◆</span>
-                    ようこそ
+                    Welcome
                     <span class="title-decoration">◆</span>
                 </h2>
                 <div class="welcome-content">
                     <p class="welcome-text">
-                        AutoFireは、Windows向けの高度なキーボード自動化ツールです。<br>
-                        SendInput APIとPostMessage APIの2つの入力モードを搭載し、<br>
-                        DirectInput対応ゲームを含む様々なアプリケーションで動作します。
+                        AutoFire is an advanced keyboard automation tool for Windows.<br>
+                        It features dual input modes (SendInput API and PostMessage API),<br>
+                        compatible with various applications including DirectInput games.
                     </p>
                     <div class="notice-box">
-                        <div class="notice-header">【重要なお知らせ】</div>
+                        <div class="notice-header">【Important Notice】</div>
                         <ul class="notice-list">
-                            <li>✦ このツールは教育目的でのみ使用してください</li>
-                            <li>✦ オンラインゲームや競技環境での使用は禁止されています</li>
-                            <li>✦ 使用は自己責任でお願いします</li>
+                            <li>✦ This tool is provided for educational purposes only</li>
+                            <li>✦ Use in online games or competitive environments is prohibited</li>
+                            <li>✦ Use at your own risk</li>
                         </ul>
                     </div>
                 </div>
@@ -75,19 +75,19 @@
         <div class="section-container">
             <h2 class="section-title-main">
                 <span class="title-bracket">【</span>
-                スクリーンショット
+                Screenshot
                 <span class="title-bracket">】</span>
             </h2>
             <div class="screenshot-frame">
                 <div class="frame-header">
-                    <span class="frame-title">■ AutoFire メインウィンドウ</span>
+                    <span class="frame-title">■ AutoFire Main Window</span>
                 </div>
                 <div class="screenshot-wrapper">
-                    <img src="screenshot.png" alt="AutoFire スクリーンショット" class="screenshot-img">
+                    <img src="screenshot.png" alt="AutoFire Screenshot" class="screenshot-img">
                 </div>
                 <div class="screenshot-caption">
-                    ※ 多言語対応UI（英語/繁體中文/简体中文）<br>
-                    ※ SendInput/PostMessage 切り替え可能
+                    ※ Multi-language UI (English / 繁體中文 / 简体中文)<br>
+                    ※ Switchable between SendInput and PostMessage modes
                 </div>
             </div>
         </div>
@@ -98,7 +98,7 @@
         <div class="section-container">
             <h2 class="section-title-main">
                 <span class="title-bracket">【</span>
-                主要機能
+                Key Features
                 <span class="title-bracket">】</span>
             </h2>
             
@@ -106,12 +106,12 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">⚙️</span>
-                        <h3 class="feature-title">デュアル入力モード</h3>
+                        <h3 class="feature-title">Dual Input Modes</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            <strong>SendInput API:</strong> ハードウェアレベルのスキャンコードを使用し、DirectInput対応ゲームで動作<br>
-                            <strong>PostMessage API:</strong> メッセージキューベースの入力方式
+                            <strong>SendInput API:</strong> Hardware-level scan codes for DirectInput game compatibility<br>
+                            <strong>PostMessage API:</strong> Message queue-based input method
                         </p>
                     </div>
                 </div>
@@ -119,14 +119,14 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">🌏</span>
-                        <h3 class="feature-title">多言語UI対応</h3>
+                        <h3 class="feature-title">Multi-Language UI</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            ワンクリックで言語切り替え:<br>
-                            • English (英語)<br>
-                            • 繁體中文 (台湾・香港)<br>
-                            • 简体中文 (中国大陸)
+                            One-click language switching:<br>
+                            • English<br>
+                            • 繁體中文 (Traditional Chinese)<br>
+                            • 简体中文 (Simplified Chinese)
                         </p>
                     </div>
                 </div>
@@ -134,11 +134,11 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">🎯</span>
-                        <h3 class="feature-title">ウィンドウ選択</h3>
+                        <h3 class="feature-title">Window Selection</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            実行中のウィンドウを自動検出し、ドロップダウンメニューから選択可能。特定のアプリケーションのみをターゲットにできます。
+                            Auto-detect running windows and select from dropdown menu. Target specific applications only.
                         </p>
                     </div>
                 </div>
@@ -146,14 +146,14 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">⏱️</span>
-                        <h3 class="feature-title">カスタマイズ可能</h3>
+                        <h3 class="feature-title">Fully Customizable</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            • トリガーキーの設定<br>
-                            • 出力キーの設定<br>
-                            • 間隔調整 (1ms〜10000ms)<br>
-                            • パススルーモード
+                            • Configurable trigger key<br>
+                            • Configurable output key<br>
+                            • Adjustable interval (1ms - 10000ms)<br>
+                            • Pass-through mode
                         </p>
                     </div>
                 </div>
@@ -161,11 +161,11 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">💾</span>
-                        <h3 class="feature-title">設定保存機能</h3>
+                        <h3 class="feature-title">Settings Persistence</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            すべての設定はJSON形式で自動保存され、次回起動時に復元されます。言語設定も保持されます。
+                            All settings are automatically saved in JSON format and restored on next launch. Language preference is also preserved.
                         </p>
                     </div>
                 </div>
@@ -173,11 +173,11 @@
                 <div class="feature-card">
                     <div class="feature-header">
                         <span class="feature-icon">🔒</span>
-                        <h3 class="feature-title">安全設計</h3>
+                        <h3 class="feature-title">Safe Design</h3>
                     </div>
                     <div class="feature-body">
                         <p class="feature-desc">
-                            スレッドセーフな実装、エラーハンドリング、管理者権限での実行。オープンソースで透明性を確保。
+                            Thread-safe implementation, error handling, admin rights execution. Open source for transparency.
                         </p>
                     </div>
                 </div>
@@ -190,42 +190,42 @@
         <div class="section-container">
             <h2 class="section-title-main">
                 <span class="title-bracket">【</span>
-                技術仕様
+                Technical Specifications
                 <span class="title-bracket">】</span>
             </h2>
             
             <div class="specs-table">
                 <table class="jp-table">
                     <tr class="table-header">
-                        <th>項目</th>
-                        <th>詳細</th>
+                        <th>Specification</th>
+                        <th>Details</th>
                     </tr>
                     <tr>
-                        <td class="spec-label">開発言語</td>
+                        <td class="spec-label">Language</td>
                         <td>Python 3.13.3</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">UIフレームワーク</td>
+                        <td class="spec-label">UI Framework</td>
                         <td>Tkinter with ttk</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">入力検出</td>
-                        <td>keyboard ライブラリ (グローバルフック)</td>
+                        <td class="spec-label">Input Detection</td>
+                        <td>keyboard library (global hooks)</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">Windows API</td>
+                        <td class="spec-label">Windows APIs</td>
                         <td>SendInput, PostMessageW, FindWindowW, EnumWindows</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">ファイルサイズ</td>
-                        <td>11.6 MB (スタンドアロンEXE)</td>
+                        <td class="spec-label">File Size</td>
+                        <td>11.6 MB (standalone EXE)</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">動作環境</td>
-                        <td>Windows 10/11 (管理者権限必要)</td>
+                        <td class="spec-label">Requirements</td>
+                        <td>Windows 10/11 (admin rights required)</td>
                     </tr>
                     <tr>
-                        <td class="spec-label">ライセンス</td>
+                        <td class="spec-label">License</td>
                         <td>MIT License</td>
                     </tr>
                 </table>
@@ -238,24 +238,24 @@
         <div class="section-container">
             <h2 class="section-title-main">
                 <span class="title-bracket">【</span>
-                ダウンロード
+                Download
                 <span class="title-bracket">】</span>
             </h2>
             
             <div class="download-box">
                 <div class="download-header">
                     <h3 class="download-title">AutoFire v1.0.0</h3>
-                    <p class="download-date">リリース日: 2025年10月6日</p>
+                    <p class="download-date">Release Date: October 6, 2025</p>
                 </div>
                 <div class="download-content">
                     <p class="download-desc">
-                        最新バージョンをダウンロードしてください。<br>
-                        スタンドアロンEXEファイルで、インストール不要でご使用いただけます。
+                        Download the latest version.<br>
+                        Standalone EXE file - no installation required.
                     </p>
                     <div class="download-buttons">
                         <a href="https://github.com/HugoLi0213/AutoFire/releases/latest" class="btn-jp btn-download">
                             <span class="btn-icon">📥</span>
-                            <span class="btn-text">ダウンロード (11.6 MB)</span>
+                            <span class="btn-text">Download (11.6 MB)</span>
                         </a>
                         <a href="https://github.com/HugoLi0213/AutoFire/releases" class="btn-jp btn-releases">
                             <span class="btn-icon">�</span>
@@ -265,13 +265,13 @@
                 </div>
                 
                 <div class="download-steps">
-                    <h4 class="steps-title">▼ 使用方法</h4>
+                    <h4 class="steps-title">▼ How to Use</h4>
                     <ol class="steps-list">
-                        <li>上のボタンから <code>AutoFire_v1.0.0_Release.zip</code> をダウンロード</li>
-                        <li>ZIPファイルを解凍</li>
-                        <li><code>AutoFire.exe</code> を右クリックし、「管理者として実行」を選択</li>
-                        <li>トリガーキーと出力キーを設定</li>
-                        <li>「Start」ボタンをクリックして開始</li>
+                        <li>Download <code>AutoFire_v1.0.0_Release.zip</code> from the button above</li>
+                        <li>Extract the ZIP file</li>
+                        <li>Right-click <code>AutoFire.exe</code> and select "Run as administrator"</li>
+                        <li>Configure trigger key and output key</li>
+                        <li>Click "Start" button to begin</li>
                     </ol>
                 </div>
             </div>
@@ -283,14 +283,14 @@
         <div class="section-container">
             <h2 class="section-title-main">
                 <span class="title-bracket">【</span>
-                関連リンク
+                Related Links
                 <span class="title-bracket">】</span>
             </h2>
             
             <div class="links-grid">
                 <div class="link-box">
-                    <h3 class="link-title">□ GitHub リポジトリ</h3>
-                    <p class="link-desc">ソースコードを閲覧・貢献</p>
+                    <h3 class="link-title">□ GitHub Repository</h3>
+                    <p class="link-desc">View source code and contribute</p>
                     <a href="https://github.com/HugoLi0213/AutoFire" class="link-url" target="_blank">
                         https://github.com/HugoLi0213/AutoFire →
                     </a>
@@ -298,7 +298,7 @@
                 
                 <div class="link-box">
                     <h3 class="link-title">□ README (English)</h3>
-                    <p class="link-desc">英語版ドキュメント</p>
+                    <p class="link-desc">English documentation</p>
                     <a href="https://github.com/HugoLi0213/AutoFire/blob/main/README.md" class="link-url" target="_blank">
                         README.md →
                     </a>
@@ -306,15 +306,15 @@
                 
                 <div class="link-box">
                     <h3 class="link-title">□ README (繁體中文)</h3>
-                    <p class="link-desc">繁体字中国語版</p>
+                    <p class="link-desc">Traditional Chinese version</p>
                     <a href="https://github.com/HugoLi0213/AutoFire/blob/main/README_TW.md" class="link-url" target="_blank">
                         README_TW.md →
                     </a>
                 </div>
                 
                 <div class="link-box">
-                    <h3 class="link-title">□ セキュリティ情報</h3>
-                    <p class="link-desc">セキュリティに関する説明</p>
+                    <h3 class="link-title">□ Security Information</h3>
+                    <p class="link-desc">Security details and explanations</p>
                     <a href="https://github.com/HugoLi0213/AutoFire/blob/main/SECURITY.md" class="link-url" target="_blank">
                         SECURITY.md →
                     </a>
@@ -328,11 +328,11 @@
         <div class="footer-content">
             <div class="footer-warning">
                 <p class="warning-text">
-                    ⚠️ 警告: このツールは教育目的でのみ提供されています ⚠️
+                    ⚠️ Warning: This tool is provided for educational purposes only ⚠️
                 </p>
                 <p class="warning-subtext">
-                    オンラインゲーム、競技環境、商用目的での使用は固く禁じられています。<br>
-                    使用によって生じたいかなる結果についても、開発者は責任を負いません。
+                    Use in online games, competitive environments, or commercial purposes is strictly prohibited.<br>
+                    The developer assumes no responsibility for any consequences arising from use.
                 </p>
             </div>
             
@@ -346,7 +346,7 @@
             </div>
             
             <div class="footer-counter">
-                <p class="counter-text">訪問者カウンター: [準備中]</p>
+                <p class="counter-text">Visitor Counter: [Coming Soon]</p>
             </div>
         </div>
     </footer>
