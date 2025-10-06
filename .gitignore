@@ -23,8 +23,11 @@ htmlcov/
 
 # PyInstaller
 build/
-dist/
-*.spec
+dist/*.exe
+dist/*.txt
+dist/*.md
+!dist/*Release*.zip
+!dist/*Release*.7z
 
 # Config files (user-specific)
 autofire.json
