@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AutoFire - Windows keyboard automation tool with dual input modes, multi-language UI, and DirectInput compatibility. For educational purposes.">
+    <meta name="keywords" content="keyboard automation, input simulation, windows api, sendinput, postmessage, directinput, autohotkey alternative">
+    <meta name="author" content="Hugo">
+    <title>AutoFire - Keyboard Automation Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo">⚡</span>
+                <span class="brand-name">AutoFire</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Features</a>
+                <a href="#download">Download</a>
+                <a href="#docs">Docs</a>
+                <a href="https://github.com/HugoLi0213/AutoFire" target="_blank">GitHub</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <div class="badge">⚠️ For Educational Purposes Only</div>
+                <h1>AutoFire</h1>
+                <p class="tagline">Windows Keyboard Automation Tool</p>
+                <p class="description">
+                    Automatically repeat key presses with dual input modes (SendInput/PostMessage), 
+                    multi-language UI, and DirectInput game compatibility.
+                </p>
+                <div class="hero-buttons">
+                    <a href="https://github.com/HugoLi0213/AutoFire/releases/latest" class="btn btn-primary">
+                        <span>📥</span> Download v1.0.0
+                    </a>
+                    <a href="https://github.com/HugoLi0213/AutoFire" class="btn btn-secondary">
+                        <span>📖</span> View on GitHub
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-value">11 MB</div>
+                        <div class="stat-label">Standalone</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">2 Modes</div>
+                        <div class="stat-label">SendInput/PostMessage</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-value">3 Languages</div>
+                        <div class="stat-label">EN/繁中/简中</div>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="app-preview">
+                    <div class="window-bar">
+                        <div class="window-dots">
+                            <span></span><span></span><span></span>
+                        </div>
+                        <div class="window-title">AutoFire 自動連發工具</div>
+                    </div>
+                    <div class="app-screenshot">
+                        <img src="screenshot_tale_runner.png" alt="AutoFire Screenshot" onerror="this.style.display='none'">
+                        <div class="screenshot-placeholder">
+                            <span class="placeholder-icon">⚙️</span>
+                            <p>Simple & Intuitive Interface</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2 class="section-title">Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3>Dual Output Modes</h3>
+                    <p><strong>SendInput Mode:</strong> Hardware-level simulation with scan codes. Works with DirectInput games like AutoHotkey.</p>
+                    <p><strong>PostMessage Mode:</strong> Safer message queue simulation for window-specific targeting.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🪟</div>
+                    <h3>Smart Window Detection</h3>
+                    <p>Auto-detect all visible windows with dropdown selection. Real-time window list refresh with manual title input support.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🌐</div>
+                    <h3>Multi-Language UI</h3>
+                    <p>Switch between English, Traditional Chinese (繁體中文), and Simplified Chinese (简体中文) with one click.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3>Flexible Configuration</h3>
+                    <p>Customize trigger key, output key, interval (1-1000ms), and pass-through mode. Settings auto-save.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Safe & Legitimate</h3>
+                    <p>Uses standard Windows APIs (SendInput/PostMessage). No memory reading, no code injection, no DLL hooking.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h3>Portable & Lightweight</h3>
+                    <p>11 MB standalone executable. No Python installation required. Comprehensive test coverage included.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <div class="container">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Hold Trigger Key</h3>
+                    <p>Press and hold your configured trigger key (e.g., "E")</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>System Detects</h3>
+                    <p>Keyboard hook detects the key press event</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Auto-Fire Starts</h3>
+                    <p>Background thread sends repeated keypresses at your interval</p>
+                </div>
+                <div class="step-arrow">→</div>
+                <div class="step">
+                    <div class="step-number">4</div>
+                    <h3>Release to Stop</h3>
+                    <p>Release the trigger key to stop auto-fire</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Comparison Table -->
+    <section class="comparison">
+        <div class="container">
+            <h2 class="section-title">SendInput vs PostMessage</h2>
+            <div class="comparison-table">
+                <div class="comparison-row header">
+                    <div class="comparison-cell">Feature</div>
+                    <div class="comparison-cell highlight">SendInput (Recommended)</div>
+                    <div class="comparison-cell">PostMessage</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">DirectInput Games</div>
+                    <div class="comparison-cell highlight">✅ Compatible</div>
+                    <div class="comparison-cell">❌ Not Compatible</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Hardware-Level</div>
+                    <div class="comparison-cell highlight">✅ Yes (Scan Codes)</div>
+                    <div class="comparison-cell">❌ Message Queue Only</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Detection Risk</div>
+                    <div class="comparison-cell highlight">⚠️ Slightly Higher</div>
+                    <div class="comparison-cell">✅ Lower</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Game Compatibility</div>
+                    <div class="comparison-cell highlight">✅ Best</div>
+                    <div class="comparison-cell">⚠️ Limited</div>
+                </div>
+                <div class="comparison-row">
+                    <div class="comparison-cell">Like AutoHotkey</div>
+                    <div class="comparison-cell highlight">✅ Yes</div>
+                    <div class="comparison-cell">❌ No</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Download Section -->
+    <section id="download" class="download">
+        <div class="container">
+            <h2 class="section-title">Download</h2>
+            <div class="download-card">
+                <div class="download-header">
+                    <h3>AutoFire v1.0.0</h3>
+                    <span class="version-badge">Latest Release</span>
+                </div>
+                <div class="download-info">
+                    <div class="download-detail">
+                        <span class="detail-label">Platform:</span>
+                        <span class="detail-value">Windows Vista+</span>
+                    </div>
+                    <div class="download-detail">
+                        <span class="detail-label">Size:</span>
+                        <span class="detail-value">11.3 MB</span>
+                    </div>
+                    <div class="download-detail">
+                        <span class="detail-label">Type:</span>
+                        <span class="detail-value">Standalone .exe</span>
+                    </div>
+                    <div class="download-detail">
+                        <span class="detail-label">Requires:</span>
+                        <span class="detail-value">Administrator</span>
+                    </div>
+                </div>
+                <div class="download-buttons">
+                    <a href="https://github.com/HugoLi0213/AutoFire/releases/download/1.0/AutoFire_v1.0.0_Release.zip" class="btn btn-primary btn-large">
+                        📥 Download Release Package
+                    </a>
+                    <a href="https://github.com/HugoLi0213/AutoFire/releases" class="btn btn-secondary">
+                        View All Releases
+                    </a>
+                </div>
+                <p class="download-note">
+                    ⚠️ <strong>Important:</strong> Run as Administrator. For educational purposes only.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation -->
+    <section id="docs" class="documentation">
+        <div class="container">
+            <h2 class="section-title">Documentation</h2>
+            <div class="docs-grid">
+                <a href="https://github.com/HugoLi0213/AutoFire/blob/main/README.md" class="doc-card">
+                    <div class="doc-icon">📖</div>
+                    <h3>English Documentation</h3>
+                    <p>Complete guide in English</p>
+                </a>
+                <a href="https://github.com/HugoLi0213/AutoFire/blob/main/README_TW.md" class="doc-card">
+                    <div class="doc-icon">📖</div>
+                    <h3>繁體中文說明</h3>
+                    <p>完整的繁體中文指南</p>
+                </a>
+                <a href="https://github.com/HugoLi0213/AutoFire/blob/main/README_CN.md" class="doc-card">
+                    <div class="doc-icon">📖</div>
+                    <h3>简体中文说明</h3>
+                    <p>完整的简体中文指南</p>
+                </a>
+                <a href="https://github.com/HugoLi0213/AutoFire/blob/main/SECURITY.md" class="doc-card">
+                    <div class="doc-icon">🛡️</div>
+                    <h3>Security Details</h3>
+                    <p>Safety & compliance info</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq">
+        <div class="container">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>Q: Does this work with all games?</h3>
+                    <p>A: Use SendInput mode for best compatibility. PostMessage mode doesn't work with DirectInput games.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Q: Will I get banned?</h3>
+                    <p>A: This uses legitimate Windows APIs like AutoHotkey. However, check your game's Terms of Service. Some games prohibit automation.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Q: Why do I need Administrator privileges?</h3>
+                    <p>A: Windows requires admin rights for global keyboard hooks to detect your trigger key.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Q: SendInput vs PostMessage - which should I use?</h3>
+                    <p>A: SendInput (default) works with more games. PostMessage is safer but less compatible.</p>
+                </div>
+                <div class="faq-item">
+                    <h3>Q: How do I switch languages?</h3>
+                    <p>A: Click the "EN/繁中" button in the top-right corner of the app.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>AutoFire</h4>
+                    <p>Windows keyboard automation tool for educational purposes.</p>
+                    <div class="social-links">
+                        <a href="https://github.com/HugoLi0213/AutoFire" target="_blank">GitHub</a>
+                        <a href="https://github.com/HugoLi0213/AutoFire/issues" target="_blank">Issues</a>
+                        <a href="https://github.com/HugoLi0213/AutoFire/releases" target="_blank">Releases</a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="https://github.com/HugoLi0213/AutoFire/blob/main/README.md">Documentation</a></li>
+                        <li><a href="https://github.com/HugoLi0213/AutoFire/blob/main/SECURITY.md">Security</a></li>
+                        <li><a href="https://github.com/HugoLi0213/AutoFire/blob/main/DESCRIPTION.md">About</a></li>
+                        <li><a href="https://github.com/HugoLi0213/AutoFire/releases">Download</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Legal</h4>
+                    <p class="disclaimer">
+                        ⚠️ For educational purposes only. Users are responsible for compliance with Terms of Service.
+                    </p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Hugo. Released under educational license.</p>
+                <p>Built with ❤️ for the community</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
