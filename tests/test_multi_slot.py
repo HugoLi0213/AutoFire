@@ -280,10 +280,13 @@ def test_start_with_current_slot(multi_slot_ui: MultiSlotHarness) -> None:
     harness.ui.start_autofire()
     harness.pump()
     
-    # Check that engine is using slot 1
-    assert harness.ui.engine.slot.trigger_key == "m"
-    assert harness.ui.engine.slot.output_key == "n"
-    assert harness.ui.engine.slot.interval_ms == 60
+    # Check that engine is using all enabled slots
+    assert len(harness.ui.engine._slots) >= 2
+    # Find the slot with trigger_key 'm'
+    slot_m = next((s for s in harness.ui.engine._slots if s.trigger_key == "m"), None)
+    assert slot_m is not None
+    assert slot_m.output_key == "n"
+    assert slot_m.interval_ms == 60
 
 
 def test_multilanguage_slot_ui(multi_slot_ui: MultiSlotHarness) -> None:
@@ -291,19 +294,19 @@ def test_multilanguage_slot_ui(multi_slot_ui: MultiSlotHarness) -> None:
     harness = multi_slot_ui
     harness.pump()
     
-    # Check English labels
-    assert harness.ui.ui_elements['slot_frame'].cget('text') == "Slots"
-    assert harness.ui.ui_elements['add_slot_btn'].cget('text') == "Add Slot"
-    assert harness.ui.ui_elements['remove_slot_btn'].cget('text') == "Remove Slot"
+    # Check English labels (updated with improved UI labels)
+    assert harness.ui.ui_elements['slot_frame'].cget('text') == "⚡ AutoFire Slots"
+    assert harness.ui.ui_elements['add_slot_btn'].cget('text') == "➕ Add New"
+    assert harness.ui.ui_elements['remove_slot_btn'].cget('text') == "➖ Delete"
     
     # Toggle to Traditional Chinese
     harness.ui.toggle_language()
     harness.pump()
     
-    # Check Chinese labels
-    assert harness.ui.ui_elements['slot_frame'].cget('text') == "插槽"
-    assert harness.ui.ui_elements['add_slot_btn'].cget('text') == "新增插槽"
-    assert harness.ui.ui_elements['remove_slot_btn'].cget('text') == "移除插槽"
+    # Check Chinese labels (updated with improved UI labels)
+    assert harness.ui.ui_elements['slot_frame'].cget('text') == "⚡ 自動連發組合"
+    assert harness.ui.ui_elements['add_slot_btn'].cget('text') == "➕ 新增"
+    assert harness.ui.ui_elements['remove_slot_btn'].cget('text') == "➖ 刪除"
 
 
 def test_config_persistence_with_multiple_slots(multi_slot_ui: MultiSlotHarness) -> None:

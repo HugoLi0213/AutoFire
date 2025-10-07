@@ -18,6 +18,15 @@
       "trigger_key": "`",
       "use_sendinput": true,
       "window_title": "Tales Runner"
+    },
+    {
+      "enabled": true,
+      "interval_ms": 50,
+      "output_key": "r",
+      "pass_through": false,
+      "trigger_key": "e",
+      "use_sendinput": true,
+      "window_title": "test_autofire_ui_tk.py - Marcoapp - Visual Studio Code [Administrator]"
     }
   ]
 }

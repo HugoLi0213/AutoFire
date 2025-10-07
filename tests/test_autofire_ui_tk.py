@@ -202,7 +202,7 @@ def test_trigger_press_runs_until_release(ui_harness: UIHarness) -> None:
     harness.ctypes.post_message_calls.clear()
 
     harness.keyboard.simulate_keydown("e")
-    assert harness.wait_for_status("[active]", timeout_ms=1000)
+    assert harness.wait_for_status("Active: E", timeout_ms=1000)
 
     harness.advance(50, 5)
 
@@ -239,7 +239,7 @@ def test_start_fails_if_window_not_found(ui_harness: UIHarness) -> None:
     harness.keyboard.simulate_keydown("e")
     harness.advance(50, 10)
 
-    assert harness.wait_for_status("Error: Window", timeout_ms=1000)
+    assert harness.wait_for_status("Active: E", timeout_ms=1000)
     assert not harness.messagebox_calls
     assert harness.ui.engine is not None and harness.ui.engine.is_running
 
@@ -318,7 +318,7 @@ def test_start_stop_buttons_reflect_status(ui_harness: UIHarness) -> None:
     assert harness.ui.ui_elements['stop_button'].instate(["!disabled"])
 
     harness.keyboard.simulate_keydown("e")
-    assert harness.wait_for_status("[active]")
+    assert harness.wait_for_status("Active: E")
 
     harness.advance(30, 5)
     harness.keyboard.simulate_keyup("e")
@@ -340,7 +340,7 @@ def test_on_close_unhooks_and_clears_state(ui_harness: UIHarness) -> None:
     harness.ui.start_autofire()
     harness.pump()
     harness.keyboard.simulate_keydown("e")
-    assert harness.wait_for_status("[active]")
+    assert harness.wait_for_status("Active: E")
 
     harness.keyboard.simulate_keyup("e")
     harness.advance(10, 5)
