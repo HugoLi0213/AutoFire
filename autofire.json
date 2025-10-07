@@ -1,9 +1,23 @@
 {
-  "interval_ms": 100,
   "language": "zh_TW",
-  "output_key": "e",
-  "pass_through": false,
-  "trigger_key": "`",
-  "use_sendinput": true,
-  "window_title": "Tales Runner"
+  "slots": [
+    {
+      "enabled": true,
+      "interval_ms": 50,
+      "output_key": "q",
+      "pass_through": false,
+      "trigger_key": "2",
+      "use_sendinput": true,
+      "window_title": "Tales Runner"
+    },
+    {
+      "enabled": true,
+      "interval_ms": 50,
+      "output_key": "e",
+      "pass_through": false,
+      "trigger_key": "`",
+      "use_sendinput": true,
+      "window_title": "Tales Runner"
+    }
+  ]
 }

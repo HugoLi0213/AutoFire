@@ -145,3 +145,11 @@ class FakeCtypes:
 
     def PostMessageW(self, hWnd, Msg, wParam, lParam):
         self.post_message_calls.append((hWnd, Msg, wParam, lParam))
+
+    def MapVirtualKeyW(self, vk_code, map_type):
+        """Mock MapVirtualKeyW to return a fake scan code."""
+        return vk_code  # Simplified: just return the vk_code as scan_code
+
+    def SendInput(self, nInputs, pInputs, cbSize):
+        """Mock SendInput - just return success."""
+        return nInputs  # Return number of inputs successfully sent

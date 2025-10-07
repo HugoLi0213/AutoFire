@@ -42,6 +42,8 @@ class AutoFireSlot:
     interval_ms: int = 50
     pass_through: bool = False
     enabled: bool = True
+    window_title: str = ""  # Target window for PostMessage
+    use_sendinput: bool = True  # Use SendInput vs PostMessage
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -50,6 +52,8 @@ class AutoFireSlot:
             "intervalMs": self.interval_ms,
             "passThrough": self.pass_through,
             "enabled": self.enabled,
+            "windowTitle": self.window_title,
+            "useSendInput": self.use_sendinput,
         }
 
     def active_line(self) -> str:
@@ -66,6 +70,7 @@ class AutoFireConfig:
     """Configuration containing multiple AutoFire slots."""
 
     slots: list[AutoFireSlot] | None = None
+    language: str = "en"  # UI language: en, zh_TW, zh_CN
 
     def __post_init__(self):
         if self.slots is None:
@@ -73,7 +78,8 @@ class AutoFireConfig:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "slots": [slot.as_dict() for slot in self.slots]
+            "slots": [slot.as_dict() for slot in self.slots],
+            "language": self.language
         }
 
     def active_line(self) -> str:
@@ -117,12 +123,16 @@ def validate_slot(mapping: Mapping[str, Any]) -> AutoFireSlot:
         )
     pass_through = _coerce_bool(mapping.get("passThrough", False))
     enabled = _coerce_bool(mapping.get("enabled", True))
+    window_title = str(mapping.get("windowTitle", ""))
+    use_sendinput = _coerce_bool(mapping.get("useSendInput", True))
     return AutoFireSlot(
         trigger_key=trigger,
         output_key=output,
         interval_ms=interval,
         pass_through=pass_through,
         enabled=enabled,
+        window_title=window_title,
+        use_sendinput=use_sendinput,
     )
 
 
@@ -132,7 +142,8 @@ def validate_config(mapping: Mapping[str, Any]) -> AutoFireConfig:
     # Support legacy format (single slot)
     if "triggerKey" in mapping and "slots" not in mapping:
         slot = validate_slot(mapping)
-        return AutoFireConfig(slots=[slot])
+        language = str(mapping.get("language", "en"))
+        return AutoFireConfig(slots=[slot], language=language)
 
     # New format with multiple slots
     slots_data = mapping.get("slots", [])
@@ -151,7 +162,8 @@ def validate_config(mapping: Mapping[str, Any]) -> AutoFireConfig:
         except ValueError as exc:
             raise ValueError(f"Slot {idx}: {exc}") from exc
     
-    return AutoFireConfig(slots=slots)
+    language = str(mapping.get("language", "en"))
+    return AutoFireConfig(slots=slots, language=language)
 
 
 def load_config(path: Path) -> AutoFireConfig:
@@ -461,13 +473,337 @@ class AutoFireApp:
                 self._last_config_mtime = mtime
                 self.reload_config()
 
+
+# Translations for UI
+TRANSLATIONS = {
+    "en": {
+        "title": "AutoFire",
+        "simple_mode": "Simple Mode",
+        "multi_mode": "Multi-Slot Mode",
+        "switch_to_multi": "Switch to Multi-Slot Mode →",
+        "switch_to_simple": "← Switch to Simple Mode",
+        "trigger_key": "Trigger key",
+        "output_key": "Output key",
+        "target_window": "Target Window",
+        "interval": "Interval (ms)",
+        "pass_through": "Pass-through trigger key",
+        "use_sendinput": "Use SendInput (better game compatibility)",
+        "start": "Start",
+        "stop": "Stop",
+        "apply_save": "Apply & Save",
+        "add_slot": "+ Add Slot",
+        "remove_slot": "Remove Slot",
+        "enabled": "Enabled",
+        "capture": "Capture",
+        "refresh": "🔄",
+        "running": "Running",
+        "stopped": "Stopped",
+        "no_windows": "No windows found",
+        "status": "Configure your settings and click Start",
+    },
+    "zh_TW": {
+        "title": "AutoFire 自動連發",
+        "simple_mode": "簡易模式",
+        "multi_mode": "多槽位模式",
+        "switch_to_multi": "切換至多槽位模式 →",
+        "switch_to_simple": "← 切換至簡易模式",
+        "trigger_key": "觸發鍵",
+        "output_key": "輸出鍵",
+        "target_window": "目標視窗",
+        "interval": "間隔 (毫秒)",
+        "pass_through": "穿透觸發鍵",
+        "use_sendinput": "使用 SendInput (更好的遊戲相容性)",
+        "start": "啟動",
+        "stop": "停止",
+        "apply_save": "套用並儲存",
+        "add_slot": "+ 新增槽位",
+        "remove_slot": "移除槽位",
+        "enabled": "啟用",
+        "capture": "擷取",
+        "refresh": "🔄",
+        "running": "執行中",
+        "stopped": "已停止",
+        "no_windows": "未找到視窗",
+        "status": "設定完成後點擊啟動",
+    },
+    "zh_CN": {
+        "title": "AutoFire 自动连发",
+        "simple_mode": "简易模式",
+        "multi_mode": "多槽位模式",
+        "switch_to_multi": "切换至多槽位模式 →",
+        "switch_to_simple": "← 切换至简易模式",
+        "trigger_key": "触发键",
+        "output_key": "输出键",
+        "target_window": "目标窗口",
+        "interval": "间隔 (毫秒)",
+        "pass_through": "穿透触发键",
+        "use_sendinput": "使用 SendInput (更好的游戏兼容性)",
+        "start": "启动",
+        "stop": "停止",
+        "apply_save": "应用并保存",
+        "add_slot": "+ 添加槽位",
+        "remove_slot": "移除槽位",
+        "enabled": "启用",
+        "capture": "捕获",
+        "refresh": "🔄",
+        "running": "运行中",
+        "stopped": "已停止",
+        "no_windows": "未找到窗口",
+        "status": "配置完成后点击启动",
+    }
+}
+
+
+def get_all_window_titles() -> list[str]:
+    """Get a list of all visible window titles (Windows only)."""
+    if sys.platform != "win32":
+        return []
+    
+    try:
+        import ctypes
+        from ctypes import wintypes
+    except ImportError:
+        return []
+    
+    windows = []
+    
+    def enum_windows_callback(hwnd, _):
+        try:
+            if ctypes.windll.user32.IsWindowVisible(hwnd):
+                length = ctypes.windll.user32.GetWindowTextLengthW(hwnd)
+                if length > 0:
+                    buffer = ctypes.create_unicode_buffer(length + 1)
+                    ctypes.windll.user32.GetWindowTextW(hwnd, buffer, length + 1)
+                    title = buffer.value
+                    if title and title.strip():
+                        windows.append(title)
+        except Exception:
+            pass
+        return True
+    
+    try:
+        EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        callback = EnumWindowsProc(enum_windows_callback)
+        ctypes.windll.user32.EnumWindows(callback, 0)
+    except Exception:
+        pass
+    
+    return sorted(set(windows))
+
+
 def run_ui(app: AutoFireApp, config_path: Path) -> None:
     import tkinter as tk
     from tkinter import messagebox, ttk, scrolledtext
 
     root = tk.Tk()
-    root.title("AutoFire - Multi-Slot Configuration")
+    root.title("AutoFire")
+    
+    # Track UI mode
+    ui_mode = tk.StringVar(value="simple" if len(app.config.slots) == 1 else "multi")
+    
+    def show_simple_ui():
+        ui_mode.set("simple")
+        show_ui()
+    
+    def show_multi_ui():
+        ui_mode.set("multi")
+        show_ui()
+    
+    def show_ui():
+        # Clear all widgets
+        for widget in root.winfo_children():
+            widget.destroy()
+        
+        if ui_mode.get() == "simple":
+            run_simple_ui(root, app, config_path, show_multi_ui)
+        else:
+            run_multi_ui(root, app, config_path, show_simple_ui)
+    
+    show_ui()
+    root.protocol("WM_DELETE_WINDOW", root.destroy)
+    root.mainloop()
+
+
+def run_simple_ui(root: Any, app: AutoFireApp, config_path: Path, switch_callback) -> None:
+    """Simple single-slot UI (original design with all features)"""
+    import tkinter as tk
+    from tkinter import messagebox, ttk
+    
+    root.geometry("500x400")
+    root.resizable(False, False)
+
+    # Get first slot or create default
+    slot = app.config.slots[0] if app.config.slots else AutoFireSlot()
+    
+    # Language
+    current_lang = tk.StringVar(value=app.config.language)
+    
+    # Variables
+    trigger_var = tk.StringVar(value=slot.trigger_key.upper())
+    output_var = tk.StringVar(value=slot.output_key.upper())
+    interval_var = tk.IntVar(value=slot.interval_ms)
+    pass_through_var = tk.BooleanVar(value=slot.pass_through)
+    window_title_var = tk.StringVar(value=slot.window_title)
+    use_sendinput_var = tk.BooleanVar(value=slot.use_sendinput)
+    status_var = tk.StringVar(value=TRANSLATIONS[current_lang.get()]["status"])
+    
+    # Track UI elements for language switching
+    ui_elements = {}
+    
+    def toggle_language() -> None:
+        langs = ["en", "zh_TW", "zh_CN"]
+        current_idx = langs.index(current_lang.get())
+        next_lang = langs[(current_idx + 1) % len(langs)]
+        current_lang.set(next_lang)
+        update_ui_language()
+        # Save language preference
+        config = AutoFireConfig(slots=app.config.slots, language=next_lang)
+        write_config(config_path, config)
+    
+    def update_ui_language() -> None:
+        t = TRANSLATIONS[current_lang.get()]
+        root.title(t["title"])
+        ui_elements['mode_label'].config(text=t["simple_mode"])
+        ui_elements['switch_btn'].config(text=t["switch_to_multi"])
+        ui_elements['trigger_label'].config(text=t["trigger_key"])
+        ui_elements['output_label'].config(text=t["output_key"])
+        ui_elements['window_label'].config(text=t["target_window"])
+        ui_elements['interval_label'].config(text=t["interval"])
+        ui_elements['pass_check'].config(text=t["pass_through"])
+        ui_elements['sendinput_check'].config(text=t["use_sendinput"])
+        ui_elements['start_btn'].config(text=t["start"])
+        ui_elements['stop_btn'].config(text=t["stop"])
+        status_var.set(t["running"] if app.is_running else t["stopped"])
+    
+    def refresh_windows() -> None:
+        windows = get_all_window_titles()
+        ui_elements['window_combo']['values'] = windows if windows else [TRANSLATIONS[current_lang.get()]["no_windows"]]
+
+    def on_start() -> None:
+        data = {
+            "triggerKey": trigger_var.get().strip(),
+            "outputKey": output_var.get().strip(),
+            "intervalMs": interval_var.get(),
+            "passThrough": pass_through_var.get(),
+            "enabled": True,
+            "windowTitle": window_title_var.get().strip(),
+            "useSendInput": use_sendinput_var.get(),
+        }
+        try:
+            new_slot = validate_slot(data)
+        except ValueError as exc:
+            status_var.set(f"Error: {exc}")
+            messagebox.showerror("AutoFire", str(exc))
+            return
+        
+        new_config = AutoFireConfig(slots=[new_slot], language=current_lang.get())
+        
+        try:
+            write_config(config_path, new_config)
+        except OSError as exc:
+            status_var.set(f"Error: unable to save ({exc})")
+            messagebox.showerror("AutoFire", f"Unable to save config: {exc}")
+            return
+        try:
+            app.apply_binding(new_config)
+        except RuntimeError as exc:
+            status_var.set(f"Error: {exc}")
+            messagebox.showerror("AutoFire", str(exc))
+            return
+        t = TRANSLATIONS[current_lang.get()]
+        status_var.set(t["running"])
+        ui_elements['start_btn'].config(state=tk.DISABLED)
+        ui_elements['stop_btn'].config(state=tk.NORMAL)
+    
+    def on_stop() -> None:
+        for trigger_key in list(app._slot_workers.keys()):
+            app.stop_loop(trigger_key, join=True)
+        t = TRANSLATIONS[current_lang.get()]
+        status_var.set(t["stopped"])
+        ui_elements['start_btn'].config(state=tk.NORMAL)
+        ui_elements['stop_btn'].config(state=tk.DISABLED)
+
+    # Header with mode switch and language toggle
+    header = ttk.Frame(root, padding=5)
+    header.pack(fill="x")
+    ui_elements['mode_label'] = ttk.Label(header, text="Simple Mode", font=("", 10, "bold"))
+    ui_elements['mode_label'].pack(side="left")
+    ttk.Button(header, text="EN/繁/简", width=8, command=toggle_language).pack(side="right", padx=2)
+    ui_elements['switch_btn'] = ttk.Button(header, text="Switch to Multi-Slot Mode →", command=switch_callback)
+    ui_elements['switch_btn'].pack(side="right")
+
+    frame = ttk.Frame(root, padding=10)
+    frame.pack(fill="both", expand=True)
+
+    row = 0
+    # Trigger key
+    ui_elements['trigger_label'] = ttk.Label(frame, text="Trigger", width=20)
+    ui_elements['trigger_label'].grid(column=0, row=row, sticky="w", pady=4)
+    ttk.Entry(frame, textvariable=trigger_var, width=25).grid(column=1, row=row, columnspan=2, padx=4, pady=4, sticky="ew")
+    
+    row += 1
+    # Output key
+    ui_elements['output_label'] = ttk.Label(frame, text="Output", width=20)
+    ui_elements['output_label'].grid(column=0, row=row, sticky="w", pady=4)
+    ttk.Entry(frame, textvariable=output_var, width=25).grid(column=1, row=row, columnspan=2, padx=4, pady=4, sticky="ew")
+    
+    row += 1
+    # Target Window
+    ui_elements['window_label'] = ttk.Label(frame, text="Target Window", width=20)
+    ui_elements['window_label'].grid(column=0, row=row, sticky="w", pady=4)
+    ui_elements['window_combo'] = ttk.Combobox(frame, textvariable=window_title_var, width=13)
+    ui_elements['window_combo'].grid(column=1, row=row, padx=4, pady=4)
+    ttk.Button(frame, text="🔄", width=3, command=refresh_windows).grid(column=2, row=row, pady=4)
+    
+    row += 1
+    # Interval
+    ui_elements['interval_label'] = ttk.Label(frame, text="Interval (ms)", width=20)
+    ui_elements['interval_label'].grid(column=0, row=row, sticky="w", pady=4)
+    ttk.Spinbox(frame, from_=MIN_INTERVAL_MS, to=MAX_INTERVAL_MS, textvariable=interval_var, width=15).grid(column=1, row=row, padx=4, sticky="ew", pady=4)
+    
+    row += 1
+    # Pass-through
+    ui_elements['pass_check'] = ttk.Checkbutton(frame, text="Pass-through", variable=pass_through_var)
+    ui_elements['pass_check'].grid(column=0, row=row, columnspan=3, sticky="w", pady=4)
+    
+    row += 1
+    # SendInput toggle
+    ui_elements['sendinput_check'] = ttk.Checkbutton(frame, text="Use SendInput", variable=use_sendinput_var)
+    ui_elements['sendinput_check'].grid(column=0, row=row, columnspan=3, sticky="w", pady=4)
+    
+    row += 1
+    # Buttons
+    button_frame = ttk.Frame(frame)
+    button_frame.grid(column=0, row=row, columnspan=3, pady=(15, 5), sticky="ew")
+    ui_elements['start_btn'] = ttk.Button(button_frame, text="Start", command=on_start)
+    ui_elements['start_btn'].pack(side="left", expand=True, fill="x", padx=3)
+    ui_elements['stop_btn'] = ttk.Button(button_frame, text="Stop", command=on_stop, state=tk.DISABLED)
+    ui_elements['stop_btn'].pack(side="left", expand=True, fill="x", padx=3)
+    
+    row += 1
+    # Status
+    status_label = ttk.Label(frame, textvariable=status_var, relief=tk.SUNKEN, anchor="w")
+    status_label.grid(column=0, row=row, columnspan=3, sticky="ew", pady=(10, 0))
+
+    # Initialize window list
+    refresh_windows()
+    
+    # Update language
+    update_ui_language()
+
+
+def run_multi_ui(root: Any, app: AutoFireApp, config_path: Path, switch_callback) -> None:
+    """Multi-slot UI with add/remove functionality"""
+    import tkinter as tk
+    from tkinter import messagebox, ttk
+    
     root.geometry("700x500")
+
+    # Header with mode switch
+    header = ttk.Frame(root, padding=5)
+    header.pack(fill="x")
+    ttk.Label(header, text="Multi-Slot Mode", font=("", 10, "bold")).pack(side="left")
+    ttk.Button(header, text="← Switch to Simple Mode", command=switch_callback).pack(side="right")
 
     # Slot data storage: list of dicts
     slot_frames = []
@@ -494,24 +830,6 @@ def run_ui(app: AutoFireApp, config_path: Path) -> None:
 
     status_var = tk.StringVar(value="Configure your AutoFire slots and click Apply & Save")
 
-    def capture_key(target_var: tk.StringVar, button: tk.Button) -> None:
-        status_var.set("Press a key to capture...")
-        button.configure(state=tk.DISABLED)
-
-        def worker() -> None:
-            try:
-                key = keyboard.read_key(suppress=False)
-            except Exception as exc:
-                root.after(0, lambda: status_var.set(f"Capture failed: {exc}"))
-            else:
-                display = key.upper()
-                root.after(0, lambda: target_var.set(display))
-                root.after(0, lambda: status_var.set(f"Captured {display}"))
-            finally:
-                root.after(0, lambda: button.configure(state=tk.NORMAL))
-
-        threading.Thread(target=worker, name="CaptureKey", daemon=True).start()
-
     def create_slot_ui(parent: ttk.Frame, slot: AutoFireSlot, index: int) -> dict:
         frame = ttk.LabelFrame(parent, text=f"Slot {index + 1}", padding=10)
         frame.pack(fill="x", padx=5, pady=5)
@@ -529,25 +847,11 @@ def run_ui(app: AutoFireApp, config_path: Path) -> None:
 
         # Row 1: Trigger
         ttk.Label(frame, text="Trigger:").grid(column=0, row=1, sticky="w")
-        trigger_entry = ttk.Entry(frame, textvariable=trigger_var, width=10)
-        trigger_entry.grid(column=1, row=1, padx=4)
-        trigger_btn = ttk.Button(
-            frame,
-            text="Capture",
-            command=lambda: capture_key(trigger_var, trigger_btn),
-        )
-        trigger_btn.grid(column=2, row=1)
+        ttk.Entry(frame, textvariable=trigger_var, width=15).grid(column=1, row=1, columnspan=2, padx=4, sticky="ew")
 
         # Row 2: Output
         ttk.Label(frame, text="Output:").grid(column=0, row=2, sticky="w")
-        output_entry = ttk.Entry(frame, textvariable=output_var, width=10)
-        output_entry.grid(column=1, row=2, padx=4)
-        output_btn = ttk.Button(
-            frame,
-            text="Capture",
-            command=lambda: capture_key(output_var, output_btn),
-        )
-        output_btn.grid(column=2, row=2)
+        ttk.Entry(frame, textvariable=output_var, width=15).grid(column=1, row=2, columnspan=2, padx=4, sticky="ew")
 
         # Row 3: Interval
         ttk.Label(frame, text="Interval (ms):").grid(column=0, row=3, sticky="w")

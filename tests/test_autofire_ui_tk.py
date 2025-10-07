@@ -17,6 +17,7 @@ from autofire_ui import (
     MAX_INTERVAL_MS,
     AutoFireUI,
     AutoFireConfig,
+    AutoFireSlot,
     WM_KEYDOWN,
     WM_KEYUP,
 )
@@ -105,7 +106,18 @@ def ui_harness(
     monkeypatch.setattr(
         autofire_ui,
         "load_config",
-        lambda: AutoFireConfig("e", "r", 100, "Test Window", False),
+        lambda: AutoFireConfig(
+            slots=[AutoFireSlot(
+                trigger_key="e",
+                output_key="r",
+                interval_ms=100,
+                window_title="Test Window",
+                pass_through=False,
+                use_sendinput=False,
+                enabled=True
+            )],
+            language="en"
+        ),
     )
     monkeypatch.setattr(autofire_ui, "save_config", mock_save_config)
     # Mock the window enumeration function to return a simple list
@@ -146,8 +158,8 @@ def test_initial_state_and_config_load(ui_harness: UIHarness) -> None:
     assert not harness.ui.pass_var.get()
     assert harness.ui.window_title_var.get() == "Test Window"
     assert "Stopped" in harness.ui.status_var.get()
-    assert harness.ui.start_button.instate(["!disabled"])
-    assert harness.ui.stop_button.instate(["disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["!disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["disabled"])
 
 
 def test_start_and_stop_engine(ui_harness: UIHarness) -> None:
@@ -160,8 +172,8 @@ def test_start_and_stop_engine(ui_harness: UIHarness) -> None:
 
     assert harness.wait_for_status("Running", timeout_ms=1000)
     assert harness.ui.engine is not None and harness.ui.engine.is_running
-    assert harness.ui.start_button.instate(["disabled"])
-    assert harness.ui.stop_button.instate(["!disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["!disabled"])
     assert harness.keyboard.hook_key_calls
 
     harness.ui.stop_autofire()
@@ -169,8 +181,8 @@ def test_start_and_stop_engine(ui_harness: UIHarness) -> None:
 
     assert "Stopped" in harness.ui.status_var.get()
     assert not harness.ui.engine.is_running
-    assert harness.ui.start_button.instate(["!disabled"])
-    assert harness.ui.stop_button.instate(["disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["!disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["disabled"])
     assert not harness.keyboard.has_active_hooks()
 
 
@@ -274,8 +286,8 @@ def test_interval_validation_clamps_and_saves(ui_harness: UIHarness) -> None:
     harness.ui.start_autofire()
     harness.pump()
 
-    assert harness.saved_configs[-1].interval_ms == MIN_INTERVAL_MS
-    assert f"@ {MIN_INTERVAL_MS}ms" in harness.ui.status_var.get()
+    assert harness.saved_configs[-1].slots[0].interval_ms == MIN_INTERVAL_MS
+    assert f"@{MIN_INTERVAL_MS}ms" in harness.ui.status_var.get()
     assert not harness.messagebox_calls
 
     harness.ui.stop_autofire()
@@ -285,8 +297,8 @@ def test_interval_validation_clamps_and_saves(ui_harness: UIHarness) -> None:
     harness.ui.start_autofire()
     harness.pump()
 
-    assert harness.saved_configs[-1].interval_ms == MAX_INTERVAL_MS
-    assert f"@ {MAX_INTERVAL_MS}ms" in harness.ui.status_var.get()
+    assert harness.saved_configs[-1].slots[0].interval_ms == MAX_INTERVAL_MS
+    assert f"@{MAX_INTERVAL_MS}ms" in harness.ui.status_var.get()
     assert not harness.messagebox_calls
 
 
@@ -295,15 +307,15 @@ def test_start_stop_buttons_reflect_status(ui_harness: UIHarness) -> None:
     harness.ui.window_title_var.set(harness.ctypes.target_window_title)
     harness.pump()
 
-    assert harness.ui.start_button.instate(["!disabled"])
-    assert harness.ui.stop_button.instate(["disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["!disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["disabled"])
 
     harness.ui.start_autofire()
     harness.pump()
     assert harness.wait_for_status("Running")
 
-    assert harness.ui.start_button.instate(["disabled"])
-    assert harness.ui.stop_button.instate(["!disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["!disabled"])
 
     harness.keyboard.simulate_keydown("e")
     assert harness.wait_for_status("[active]")
@@ -316,8 +328,8 @@ def test_start_stop_buttons_reflect_status(ui_harness: UIHarness) -> None:
     harness.ui.stop_autofire()
     harness.advance(20, 5)
     assert harness.wait_for_status("Stopped")
-    assert harness.ui.start_button.instate(["!disabled"])
-    assert harness.ui.stop_button.instate(["disabled"])
+    assert harness.ui.ui_elements['start_button'].instate(["!disabled"])
+    assert harness.ui.ui_elements['stop_button'].instate(["disabled"])
 
 
 def test_on_close_unhooks_and_clears_state(ui_harness: UIHarness) -> None:

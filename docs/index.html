@@ -33,7 +33,8 @@
             <p>
                 AutoFire is an advanced keyboard automation tool for Windows.
                 It features dual input modes (SendInput API and PostMessage API),
-                compatible with various applications including DirectInput games.
+                multi-slot configuration support, and is compatible with various
+                applications including DirectInput games.
             </p>
             <div class="notice">
                 <strong>Important Notice</strong>
@@ -66,6 +67,11 @@
             <h2>Features</h2>
             <div class="features">
                 <div class="feature">
+                    <h3>Multi-Slot Configuration</h3>
+                    <p>Configure multiple trigger/output key pairs simultaneously. Each slot can be individually enabled/disabled with custom intervals and settings. Perfect for complex automation workflows.</p>
+                </div>
+
+                <div class="feature">
                     <h3>Dual Input Modes</h3>
                     <p><strong>SendInput API:</strong> Hardware-level scan codes for DirectInput game compatibility</p>
                     <p><strong>PostMessage API:</strong> Message queue-based input method</p>
@@ -93,7 +99,7 @@
 
                 <div class="feature">
                     <h3>Settings Persistence</h3>
-                    <p>All settings are automatically saved in JSON format and restored on next launch.</p>
+                    <p>All settings including multiple slots are automatically saved in JSON format and restored on next launch. No need to reconfigure every time.</p>
                 </div>
 
                 <div class="feature">
@@ -146,23 +152,26 @@
         <div class="container">
             <h2>Download</h2>
             <div class="download-info">
-                <h3>AutoFire v1.0.0</h3>
-                <p>Release Date: October 6, 2025</p>
+                <h3>AutoFire v2.0.0</h3>
+                <p>Release Date: October 7, 2025</p>
+                <p>New: Multi-slot configuration support! Configure multiple trigger/output pairs simultaneously.</p>
                 <p>Standalone EXE file - no installation required</p>
                 
                 <div class="buttons">
-                    <a href="https://github.com/HugoLi0213/AutoFire/releases/latest" class="button primary">Download (11.6 MB)</a>
+                    <a href="https://github.com/HugoLi0213/AutoFire/releases/latest" class="button primary">Download Latest</a>
                     <a href="https://github.com/HugoLi0213/AutoFire/releases" class="button">All Releases</a>
                 </div>
                 
                 <div class="steps">
                     <h4>How to Use:</h4>
                     <ol>
-                        <li>Download <code>AutoFire_v1.0.0_Release.zip</code></li>
+                        <li>Download the latest release from GitHub</li>
                         <li>Extract the ZIP file</li>
-                        <li>Right-click <code>AutoFire.exe</code> and select "Run as administrator"</li>
-                        <li>Configure trigger key and output key</li>
-                        <li>Click "Start" button to begin</li>
+                        <li>Run <code>python autofire.py --ui</code> with administrator rights</li>
+                        <li>Click "Add Slot" to add trigger/output key pairs</li>
+                        <li>Configure each slot with desired settings</li>
+                        <li>Click "Apply & Save" to activate your configuration</li>
+                        <li>Hold any trigger key to start automation</li>
                     </ol>
                 </div>
             </div>

@@ -39,7 +39,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -144,36 +144,46 @@ MAX_INTERVAL_MS = 1000
 # Translations
 TRANSLATIONS = {
     "en": {
-        "title": "AutoFire (PostMessage)",
-        "trigger_key": "Trigger key",
-        "output_key": "Output key",
-        "target_window": "Target Window Title",
-        "interval": "Interval (ms)",
-        "pass_through": "Pass-through trigger key",
-        "use_sendinput": "Use SendInput (AHK-like, better game compatibility)",
-        "start": "Start",
-        "stop": "Stop",
-        "author_info": "Author: Hugo | Last Updated: 2025-10-06",
+        "title": "AutoFire - Multi-Key Automation",
+        "trigger_key": "Press This Key ▼",
+        "output_key": "To Fire This Key ▶",
+        "target_window": "Target Window (Optional)",
+        "interval": "Speed (ms) - Lower = Faster",
+        "pass_through": "🔓 Allow Original Key (Mix Mode)",
+        "use_sendinput": "⚡ Hardware Mode (Best for Games)",
+        "start": "▶ START",
+        "stop": "⏹ STOP",
+        "author_info": "Author: Hugo | Last Updated: 2025-10-07",
         "running": "Running",
         "stopped": "Stopped",
         "error_window": "Error: Window",
         "no_windows": "No windows found",
+        "slots": "⚡ AutoFire Slots",
+        "add_slot": "➕ Add New",
+        "remove_slot": "➖ Delete",
+        "slot_enabled": "✓ Active",
+        "guide": "💡 Hold trigger key → Auto-fires output key repeatedly | Create multiple slots for different keys",
     },
     "zh_TW": {
-        "title": "AutoFire 自動連發工具",
-        "trigger_key": "觸發鍵",
-        "output_key": "輸出鍵",
-        "target_window": "目標視窗標題",
-        "interval": "間隔 (毫秒)",
-        "pass_through": "穿透觸發鍵",
-        "use_sendinput": "使用 SendInput (AHK 風格，更好的遊戲相容性)",
-        "start": "啟動",
-        "stop": "停止",
-        "author_info": "作者：Hugo | 最後更新：2025-10-06",
+        "title": "AutoFire - 多鍵自動化工具",
+        "trigger_key": "按下此鍵 ▼",
+        "output_key": "自動連發此鍵 ▶",
+        "target_window": "指定視窗 (選填)",
+        "interval": "速度 (毫秒) - 越小越快",
+        "pass_through": "🔓 保留原始按鍵 (混合模式)",
+        "use_sendinput": "⚡ 硬體模式 (遊戲最佳)",
+        "start": "▶ 啟動",
+        "stop": "⏹ 停止",
+        "author_info": "作者：Hugo | 最後更新：2025-10-07",
         "running": "執行中",
         "stopped": "已停止",
         "error_window": "錯誤：視窗",
         "no_windows": "未找到視窗",
+        "slots": "⚡ 自動連發組合",
+        "add_slot": "➕ 新增",
+        "remove_slot": "➖ 刪除",
+        "slot_enabled": "✓ 啟用",
+        "guide": "💡 按住觸發鍵 → 自動連發輸出鍵 | 可建立多個插槽設定不同按鍵",
     }
 }
 
@@ -206,74 +216,110 @@ def get_all_window_titles() -> list[str]:
 
 
 @dataclass(slots=True)
-class AutoFireConfig:
+class AutoFireSlot:
+    """Configuration for a single AutoFire slot."""
     trigger_key: str = "e"
     output_key: str = "r"
     interval_ms: int = 50
-    window_title: str = "Untitled - Notepad"  # New field for PostMessage target
-    pass_through: bool = False # This is now managed by the keyboard library
-    use_sendinput: bool = True  # Use SendInput (AHK-like) by default
-    language: str = "en"  # Language setting: "en" or "zh_TW"
+    window_title: str = ""  # Empty means global (no window targeting)
+    pass_through: bool = False
+    use_sendinput: bool = True
+    enabled: bool = True
 
     def formatted(self) -> str:
+        target = f"-> '{self.window_title}'" if self.window_title else "(global)"
+        method = "SendInput" if self.use_sendinput else "PostMessage"
         return (
-            f"AutoFire (PostMessage): {self.trigger_key.upper()}->{self.output_key.upper()} "
-            f"@ {self.interval_ms}ms -> '{self.window_title}'"
+            f"{self.trigger_key.upper()}->{self.output_key.upper()} "
+            f"@{self.interval_ms}ms {target} [{method}]"
         )
+
+
+@dataclass(slots=True)
+class AutoFireConfig:
+    """Configuration containing multiple AutoFire slots."""
+    slots: list = field(default_factory=lambda: [AutoFireSlot()])
+    language: str = "en"  # Language setting: "en", "zh_TW", or "zh_CN"
+
+    def formatted(self) -> str:
+        enabled_count = sum(1 for s in self.slots if s.enabled)
+        return f"AutoFire: {enabled_count}/{len(self.slots)} slots enabled"
 
 
 class AutoFireEngine:
     def __init__(
         self,
-        status_callback: Callable[[str, AutoFireConfig], None],
-        error_callback: Callable[[str, AutoFireConfig], None],
+        status_callback: Callable[[str, AutoFireSlot], None],
+        error_callback: Callable[[str, AutoFireSlot], None],
     ) -> None:
-        self._config = AutoFireConfig()
+        self._slots: list[AutoFireSlot] = []
         self._status_callback = status_callback
         self._error_callback = error_callback
         self._is_running = False
-        self._is_active = False
-        self._error_state: Optional[str] = None
-        self._pending_error_status: Optional[tuple[str, AutoFireConfig]] = None
-        self._thread: Optional[threading.Thread] = None
+        self._slot_states: dict[str, bool] = {}  # trigger_key -> is_active
+        self._slot_threads: dict[str, threading.Thread] = {}  # trigger_key -> thread
         self._lock = threading.Lock()
 
     @property
-    def config(self) -> AutoFireConfig:
-        return self._config
+    def slot(self) -> AutoFireSlot:
+        """For backward compatibility - returns first slot."""
+        return self._slots[0] if self._slots else AutoFireSlot()
 
     @property
     def is_running(self) -> bool:
         return self._is_running
 
-    def apply_config(self, config: AutoFireConfig) -> None:
+    def apply_slots(self, slots: list[AutoFireSlot]) -> None:
+        """Apply multiple slots to the engine."""
         if self.is_running:
             self.unbind_trigger_handlers()
-        self._config = config
+        self._slots = [s for s in slots if s.enabled]
+        
+    def apply_slot(self, slot: AutoFireSlot) -> None:
+        """For backward compatibility - apply a single slot."""
+        if self.is_running:
+            self.unbind_trigger_handlers()
+        self._slots = [slot] if slot.enabled else []
 
     def bind_trigger_handlers(self) -> None:
         if self.is_running:
             return
 
-        self._error_state = None
+        if not self._slots:
+            raise RuntimeError("No enabled slots to bind.")
+
         self._is_running = True
+        self._slot_states = {}
         try:
-            # The 'suppress' argument should be True to block the event,
-            # which is the opposite of 'pass_through'.
-            suppress_event = not self.config.pass_through
-            keyboard.on_press_key(
-                self.config.trigger_key,
-                self._on_trigger_press,
-                suppress=suppress_event,
-            )
-            keyboard.on_release_key(
-                self.config.trigger_key,
-                self._on_trigger_release,
-                suppress=suppress_event,
-            )
-            self._update_status("Running")
+            # Bind handlers for each enabled slot
+            for slot in self._slots:
+                self._slot_states[slot.trigger_key] = False
+                suppress_event = not slot.pass_through
+                
+                # Create closure to capture slot
+                def make_press_handler(s):
+                    return lambda e: self._on_trigger_press(e, s)
+                
+                def make_release_handler(s):
+                    return lambda e: self._on_trigger_release(e, s)
+                
+                keyboard.on_press_key(
+                    slot.trigger_key,
+                    make_press_handler(slot),
+                    suppress=suppress_event,
+                )
+                keyboard.on_release_key(
+                    slot.trigger_key,
+                    make_release_handler(slot),
+                    suppress=suppress_event,
+                )
+            
+            enabled_count = len(self._slots)
+            status = f"Running ({enabled_count} slot{'s' if enabled_count > 1 else ''})"
+            self._status_callback(status, self._slots[0])
         except Exception as exc:
             self._is_running = False
+            self._slot_states = {}
             raise RuntimeError(
                 f"Failed to bind keys. Try running as Administrator. Error: {exc}"
             )
@@ -283,94 +329,126 @@ class AutoFireEngine:
             return
         
         self._is_running = False
-        self._set_active(False) # Ensure the loop stops
+        
+        # Stop all active slots
+        with self._lock:
+            for trigger_key in list(self._slot_states.keys()):
+                self._slot_states[trigger_key] = False
+        
+        # Wait for threads to finish
+        for thread in self._slot_threads.values():
+            if thread.is_alive():
+                thread.join(timeout=0.5)
+        
+        self._slot_threads.clear()
+        self._slot_states.clear()
         keyboard.unhook_all()
-        self._update_status("Stopped")
+        
+        if self._slots:
+            self._status_callback("Stopped", self._slots[0])
 
     def shutdown(self) -> None:
         self.unbind_trigger_handlers()
 
-    def _on_trigger_press(self, e: keyboard.KeyboardEvent) -> None:
+    def _on_trigger_press(self, e: keyboard.KeyboardEvent, slot: AutoFireSlot) -> None:
         # This check prevents the hotkey from re-triggering itself if not suppressed
-        if e.name != self._config.trigger_key.lower():
+        if e.name != slot.trigger_key.lower():
             return
-        self._set_active(True)
+        self._set_slot_active(slot, True)
 
-    def _on_trigger_release(self, e: keyboard.KeyboardEvent) -> None:
-        if e.name != self._config.trigger_key.lower():
+    def _on_trigger_release(self, e: keyboard.KeyboardEvent, slot: AutoFireSlot) -> None:
+        if e.name != slot.trigger_key.lower():
             return
-        self._set_active(False)
+        self._set_slot_active(slot, False)
 
-    def _set_active(self, active: bool) -> None:
+    def _set_slot_active(self, slot: AutoFireSlot, active: bool) -> None:
+        trigger_key = slot.trigger_key
         with self._lock:
-            if self._is_active == active:
+            if self._slot_states.get(trigger_key) == active:
                 return
-            self._is_active = active
+            self._slot_states[trigger_key] = active
 
             if active and self._is_running:
-                if not self._error_state:
-                    self._update_status("[active]")
-                # Start the autofire loop in a new thread
-                self._thread = threading.Thread(target=self._autofire_loop, daemon=True)
-                self._thread.start()
+                # Start the autofire loop for this slot in a new thread
+                thread = threading.Thread(
+                    target=self._autofire_loop, 
+                    args=(slot,), 
+                    daemon=True
+                )
+                self._slot_threads[trigger_key] = thread
+                thread.start()
+                
+                # Update status to show active slots
+                active_slots = [k.upper() for k, v in self._slot_states.items() if v]
+                if active_slots:
+                    status = f"Active: {', '.join(active_slots)}"
+                    self._status_callback(status, slot)
             elif not active and self._is_running:
-                if not self._error_state:
-                    self._update_status("Running")
+                # Remove thread reference when slot becomes inactive
+                if trigger_key in self._slot_threads:
+                    del self._slot_threads[trigger_key]
+                
+                # Check if any slots are still active
+                active_slots = [k.upper() for k, v in self._slot_states.items() if v]
+                if active_slots:
+                    status = f"Active: {', '.join(active_slots)}"
+                    self._status_callback(status, slot)
+                else:
+                    enabled_count = len(self._slots)
+                    status = f"Running ({enabled_count} slot{'s' if enabled_count > 1 else ''})"
+                    self._status_callback(status, self._slots[0])
 
-    def _autofire_loop(self) -> None:
-        """The main loop that sends keyboard events.
+    def _autofire_loop(self, slot: AutoFireSlot) -> None:
+        """The main loop that sends keyboard events for a specific slot.
         
         Uses SendInput (AHK-like) by default for better game compatibility,
         or PostMessage for window-specific targeting.
         """
+        trigger_key = slot.trigger_key
+        
         # For PostMessage, we need a window handle
         hwnd = None
-        if not self.config.use_sendinput:
-            hwnd = ctypes.windll.user32.FindWindowW(None, self.config.window_title)
+        if not slot.use_sendinput and slot.window_title:
+            hwnd = ctypes.windll.user32.FindWindowW(None, slot.window_title)
             if not hwnd:
-                logging.warning(f"Window '{self.config.window_title}' not found.")
+                logging.warning(f"Window '{slot.window_title}' not found.")
                 with self._lock:
-                    self._error_state = "Error: Window"
-                    self._is_active = False
-                    self._pending_error_status = ("Error: Window", self.config)
+                    self._slot_states[trigger_key] = False
+                self._status_callback(f"Error: Window '{slot.window_title}' not found", slot)
                 return
 
-        vk_code = VK_CODES.get(self.config.output_key.lower())
+        vk_code = VK_CODES.get(slot.output_key.lower())
         if not vk_code:
-            self._update_status(f"Error: Key '{self.config.output_key}' not supported.")
             with self._lock:
-                self._is_active = False
+                self._slot_states[trigger_key] = False
+            self._status_callback(f"Error: Key '{slot.output_key}' not supported", slot)
             return
 
-        interval_sec = self.config.interval_ms / 1000.0
+        interval_sec = slot.interval_ms / 1000.0
 
         while True:
             with self._lock:
-                if not self._is_active or not self._is_running:
+                if not self._slot_states.get(trigger_key, False) or not self._is_running:
                     break
             
-            if self.config.use_sendinput:
+            if slot.use_sendinput:
                 # SendInput method (AHK-like) - works with DirectInput games
                 send_key_with_sendinput(vk_code, key_up=False)
                 time.sleep(0.02)  # Small delay between down and up
                 send_key_with_sendinput(vk_code, key_up=True)
             else:
                 # PostMessage method - window-specific targeting
-                ctypes.windll.user32.PostMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
-                time.sleep(0.02)
-                ctypes.windll.user32.PostMessageW(hwnd, WM_KEYUP, vk_code, 0)
+                if hwnd:
+                    ctypes.windll.user32.PostMessageW(hwnd, WM_KEYDOWN, vk_code, 0)
+                    time.sleep(0.02)
+                    ctypes.windll.user32.PostMessageW(hwnd, WM_KEYUP, vk_code, 0)
             
             time.sleep(interval_sec)
 
-    def _update_status(self, state: str) -> None:
-        self._status_callback(state, self._config)
-
-    def get_pending_error_status(self) -> Optional[tuple[str, AutoFireConfig]]:
+    def get_pending_error_status(self) -> Optional[tuple[str, AutoFireSlot]]:
         """Check if there's a pending error status from a background thread."""
-        with self._lock:
-            error = self._pending_error_status
-            self._pending_error_status = None
-            return error
+        # No longer needed with new architecture, but kept for compatibility
+        return None
 
 
 def load_config() -> AutoFireConfig:
@@ -381,26 +459,56 @@ def load_config() -> AutoFireConfig:
     except (json.JSONDecodeError, OSError) as exc:
         print(f"Could not load or parse config: {exc}")
         return AutoFireConfig()
-        
-    return AutoFireConfig(
-        trigger_key=raw.get("trigger_key", "e"),
-        output_key=raw.get("output_key", "r"),
-        interval_ms=raw.get("interval_ms", 50),
-        window_title=raw.get("window_title", "Untitled - Notepad"),
-        pass_through=raw.get("pass_through", False),
-        use_sendinput=raw.get("use_sendinput", True),
-        language=raw.get("language", "en"),
-    )
+    
+    # Support legacy single-slot format
+    if "trigger_key" in raw and "slots" not in raw:
+        slot = AutoFireSlot(
+            trigger_key=raw.get("trigger_key", "e"),
+            output_key=raw.get("output_key", "r"),
+            interval_ms=raw.get("interval_ms", 50),
+            window_title=raw.get("window_title", ""),
+            pass_through=raw.get("pass_through", False),
+            use_sendinput=raw.get("use_sendinput", True),
+            enabled=True,
+        )
+        language = raw.get("language", "en")
+        return AutoFireConfig(slots=[slot], language=language)
+    
+    # New multi-slot format
+    slots_data = raw.get("slots", [])
+    slots = []
+    for s in slots_data:
+        slots.append(AutoFireSlot(
+            trigger_key=s.get("trigger_key", "e"),
+            output_key=s.get("output_key", "r"),
+            interval_ms=s.get("interval_ms", 50),
+            window_title=s.get("window_title", ""),
+            pass_through=s.get("pass_through", False),
+            use_sendinput=s.get("use_sendinput", True),
+            enabled=s.get("enabled", True),
+        ))
+    
+    if not slots:
+        slots = [AutoFireSlot()]
+    
+    language = raw.get("language", "en")
+    return AutoFireConfig(slots=slots, language=language)
 
 
 def save_config(config: AutoFireConfig) -> None:
     payload = {
-        "trigger_key": config.trigger_key,
-        "output_key": config.output_key,
-        "interval_ms": config.interval_ms,
-        "window_title": config.window_title,
-        "pass_through": config.pass_through,
-        "use_sendinput": config.use_sendinput,
+        "slots": [
+            {
+                "trigger_key": s.trigger_key,
+                "output_key": s.output_key,
+                "interval_ms": s.interval_ms,
+                "window_title": s.window_title,
+                "pass_through": s.pass_through,
+                "use_sendinput": s.use_sendinput,
+                "enabled": s.enabled,
+            }
+            for s in config.slots
+        ],
         "language": config.language,
     }
     try:
@@ -423,7 +531,7 @@ class AutoFireUI:
             self._schedule_status_update, self._immediate_status_update
         )
         self._pending_status = "Stopped"
-        self._current_config = self.engine.config
+        self._current_slot = self.engine.slot
 
         self.trigger_var = tk.StringVar(root)
         self.output_var = tk.StringVar(root)
@@ -440,12 +548,18 @@ class AutoFireUI:
 
         # Store UI elements for language switching
         self.ui_elements = {}
+        
+        # Multi-slot management
+        self.config = AutoFireConfig()
+        self.current_slot_index = 0
 
         self._build_layout()
         config = load_config()
+        self.config = config
         self.current_language = config.language
         self.populate_from_config(config)
         self._update_ui_language()
+        self._update_slot_list()
 
     def _build_layout(self) -> None:
         container = ttk.Frame(self.root, padding=12)
@@ -453,9 +567,54 @@ class AutoFireUI:
 
         # --- Language Toggle Button (Top Right) ---
         lang_row = ttk.Frame(container)
-        lang_row.pack(fill=tk.X, pady=(0, 10))
-        self.lang_button = ttk.Button(lang_row, text="EN/繁中", width=10, command=self.toggle_language)
+        lang_row.pack(fill=tk.X, pady=(0, 5))
+        self.lang_button = ttk.Button(lang_row, text="EN/繁", width=10, command=self.toggle_language)
         self.lang_button.pack(side=tk.RIGHT)
+        
+        # --- Quick Guide ---
+        guide_frame = ttk.Frame(container, relief=tk.RIDGE, borderwidth=1)
+        guide_frame.pack(fill=tk.X, pady=(0, 10), padx=2)
+        guide_label = ttk.Label(
+            guide_frame, 
+            text="💡 Hold trigger key → Auto-fires output key repeatedly | Create multiple slots for different keys",
+            font=("Segoe UI", 8),
+            foreground="#0066cc",
+            wraplength=450,
+            justify=tk.LEFT,
+            padding=5
+        )
+        guide_label.pack(fill=tk.X)
+        self.ui_elements['guide_label'] = guide_label
+        
+        # --- Multi-Slot Management Section ---
+        slot_frame = ttk.LabelFrame(container, text="Slots", padding=8)
+        slot_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        self.ui_elements['slot_frame'] = slot_frame
+        
+        # Slot listbox with scrollbar
+        list_frame = ttk.Frame(slot_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 5))
+        
+        scrollbar = ttk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.slot_listbox = tk.Listbox(list_frame, height=5, yscrollcommand=scrollbar.set)
+        self.slot_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.slot_listbox.bind('<<ListboxSelect>>', self._on_slot_select)
+        scrollbar.config(command=self.slot_listbox.yview)
+        
+        # Slot management buttons
+        slot_btn_frame = ttk.Frame(slot_frame)
+        slot_btn_frame.pack(fill=tk.X)
+        
+        self.ui_elements['add_slot_btn'] = ttk.Button(slot_btn_frame, text="Add Slot", command=self._add_slot)
+        self.ui_elements['add_slot_btn'].pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        
+        self.ui_elements['remove_slot_btn'] = ttk.Button(slot_btn_frame, text="Remove Slot", command=self._remove_slot)
+        self.ui_elements['remove_slot_btn'].pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        
+        self.ui_elements['enabled_check'] = ttk.Checkbutton(slot_btn_frame, text="Enabled", command=self._toggle_slot_enabled)
+        self.ui_elements['enabled_check'].pack(side=tk.LEFT, padx=5)
 
         # --- Input Fields ---
         # Trigger key
@@ -535,11 +694,20 @@ class AutoFireUI:
         # Update window title
         self.root.title(t["title"])
         
+        # Update guide label
+        self.ui_elements['guide_label'].config(text=t["guide"])
+        
         # Update labels
         self.ui_elements['trigger_label'].config(text=t["trigger_key"])
         self.ui_elements['output_label'].config(text=t["output_key"])
         self.ui_elements['window_label'].config(text=t["target_window"])
         self.ui_elements['interval_label'].config(text=t["interval"])
+        
+        # Update slot frame
+        self.ui_elements['slot_frame'].config(text=t["slots"])
+        self.ui_elements['add_slot_btn'].config(text=t["add_slot"])
+        self.ui_elements['remove_slot_btn'].config(text=t["remove_slot"])
+        self.ui_elements['enabled_check'].config(text=t["slot_enabled"])
         
         # Update checkboxes
         self.ui_elements['pass_check'].config(text=t["pass_through"])
@@ -557,7 +725,127 @@ class AutoFireUI:
             status = t["running"]
         else:
             status = t["stopped"]
-        self._update_status_display(status, self.engine.config)
+        self._update_status_display(status, self.engine.slot)
+        
+        # Update slot list display
+        self._update_slot_list()
+    
+    def _update_slot_list(self) -> None:
+        """Update the slot listbox with current slots."""
+        if not hasattr(self, 'slot_listbox') or self.slot_listbox is None:
+            return
+            
+        self.slot_listbox.delete(0, tk.END)
+        for i, slot in enumerate(self.config.slots):
+            status = "✓" if slot.enabled else "✗"
+            display = f"{status} [{i+1}] {slot.trigger_key.upper()} → {slot.output_key.upper()} @{slot.interval_ms}ms"
+            if slot.window_title:
+                display += f" ({slot.window_title[:15]}...)" if len(slot.window_title) > 15 else f" ({slot.window_title})"
+            self.slot_listbox.insert(tk.END, display)
+        
+        # Select current slot
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            self.slot_listbox.selection_set(self.current_slot_index)
+            
+    def _on_slot_select(self, event) -> None:
+        """Handle slot selection from listbox."""
+        selection = self.slot_listbox.curselection()
+        if not selection and event is not None:
+            return
+        
+        old_index = self.current_slot_index
+        
+        # If called programmatically (event is None), use the manually set current_slot_index
+        # Otherwise use the listbox selection
+        if selection:
+            new_index = selection[0]
+        else:
+            # When called with event=None, current_slot_index has been set already
+            new_index = self.current_slot_index
+        
+        # Save current UI values to old slot before switching
+        if 0 <= old_index < len(self.config.slots) and old_index != new_index:
+            slot = self.config.slots[old_index]
+            slot.trigger_key = self.trigger_var.get().strip().lower()
+            slot.output_key = self.output_var.get().strip().lower()
+            try:
+                interval = max(MIN_INTERVAL_MS, min(MAX_INTERVAL_MS, self.interval_var.get()))
+                slot.interval_ms = interval
+            except (ValueError, tk.TclError):
+                slot.interval_ms = 50
+            slot.window_title = self.window_title_var.get().strip()
+            slot.pass_through = self.pass_var.get()
+            slot.use_sendinput = self.use_sendinput_var.get()
+            
+        self.current_slot_index = new_index
+        
+        # Load new slot data
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            slot = self.config.slots[self.current_slot_index]
+            self.trigger_var.set(slot.trigger_key)
+            self.output_var.set(slot.output_key)
+            self.interval_var.set(slot.interval_ms)
+            self.window_title_var.set(slot.window_title)
+            self.pass_var.set(slot.pass_through)
+            self.use_sendinput_var.set(slot.use_sendinput)
+            self.ui_elements['enabled_check'].state(['selected' if slot.enabled else '!selected'])
+    
+    def _save_current_slot_to_config(self) -> None:
+        """Save current UI values to the current slot in config."""
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            slot = self.config.slots[self.current_slot_index]
+            slot.trigger_key = self.trigger_var.get().strip().lower()
+            slot.output_key = self.output_var.get().strip().lower()
+            try:
+                interval = max(MIN_INTERVAL_MS, min(MAX_INTERVAL_MS, self.interval_var.get()))
+                slot.interval_ms = interval
+            except (ValueError, tk.TclError):
+                slot.interval_ms = 50
+            slot.window_title = self.window_title_var.get().strip()
+            slot.pass_through = self.pass_var.get()
+            slot.use_sendinput = self.use_sendinput_var.get()
+            
+    def _add_slot(self) -> None:
+        """Add a new slot."""
+        # Save current slot first
+        self._save_current_slot_to_config()
+        
+        # Create new slot
+        new_slot = AutoFireSlot()
+        self.config.slots.append(new_slot)
+        self.current_slot_index = len(self.config.slots) - 1
+        
+        # Update UI
+        self._update_slot_list()
+        self._on_slot_select(None)  # Load new slot
+        save_config(self.config)
+    
+    def _remove_slot(self) -> None:
+        """Remove the currently selected slot."""
+        if len(self.config.slots) <= 1:
+            messagebox.showwarning("AutoFire", "Cannot remove the last slot.", parent=self.root)
+            return
+            
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            del self.config.slots[self.current_slot_index]
+            
+            # Adjust current index
+            if self.current_slot_index >= len(self.config.slots):
+                self.current_slot_index = len(self.config.slots) - 1
+            
+            # Update UI
+            self._update_slot_list()
+            if self.config.slots:
+                self._on_slot_select(None)  # Load adjusted slot
+            save_config(self.config)
+    
+    def _toggle_slot_enabled(self) -> None:
+        """Toggle the enabled state of the current slot."""
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            slot = self.config.slots[self.current_slot_index]
+            slot.enabled = not slot.enabled
+            self._update_slot_list()
+            save_config(self.config)
 
     def refresh_window_list(self) -> None:
         """Refresh the list of available windows in the dropdown."""
@@ -568,16 +856,22 @@ class AutoFireUI:
             self.window_combo['values'] = [t["no_windows"]]
     
     def populate_from_config(self, config: AutoFireConfig) -> None:
-        self.trigger_var.set(config.trigger_key)
-        self.output_var.set(config.output_key)
-        self.interval_var.set(config.interval_ms)
-        self.pass_var.set(config.pass_through)
-        self.window_title_var.set(config.window_title)
-        self.use_sendinput_var.set(config.use_sendinput)
+        # Load current slot
+        slot = config.slots[self.current_slot_index] if config.slots else AutoFireSlot()
+        self.trigger_var.set(slot.trigger_key)
+        self.output_var.set(slot.output_key)
+        self.interval_var.set(slot.interval_ms)
+        self.pass_var.set(slot.pass_through)
+        self.window_title_var.set(slot.window_title)
+        self.use_sendinput_var.set(slot.use_sendinput)
         self.current_language = config.language
         
-        self.engine.apply_config(config)
-        self._update_status_display("Stopped", config)
+        # Update enabled checkbox
+        if hasattr(self, 'ui_elements') and 'enabled_check' in self.ui_elements:
+            self.ui_elements['enabled_check'].state(['selected' if slot.enabled else '!selected'])
+        
+        self.engine.apply_slot(slot)
+        self._update_status_display("Stopped", slot)
         self._set_button_states(running=False)
 
     def start(self) -> None:
@@ -589,12 +883,21 @@ class AutoFireUI:
         self.root.destroy()
 
     def start_autofire(self) -> None:
+        # Save current slot to config
+        self._save_current_slot_to_config()
+        
         config = self._build_config_from_inputs()
         if config is None:
             return
 
-        # Apply config first to ensure engine state is correct before binding.
-        self.engine.apply_config(config)
+        # Apply ALL enabled slots to engine
+        enabled_slots = [s for s in config.slots if s.enabled]
+        if not enabled_slots:
+            messagebox.showwarning("AutoFire", "No enabled slots. Please enable at least one slot.", parent=self.root)
+            return
+            
+        self.engine.apply_slots(enabled_slots)
+        self.config = config
         save_config(config)
 
         try:
@@ -604,13 +907,15 @@ class AutoFireUI:
             return
 
         t = self.translations[self.current_language]
-        self._update_status_display(t["running"], config)
+        enabled_count = len(enabled_slots)
+        status = f"{t['running']} ({enabled_count} slot{'s' if enabled_count > 1 else ''})"
+        self._update_status_display(status, enabled_slots[0])
         self._set_button_states(running=True)
 
     def stop_autofire(self) -> None:
         self.engine.unbind_trigger_handlers()
         t = self.translations[self.current_language]
-        self._update_status_display(t["stopped"], self.engine.config)
+        self._update_status_display(t["stopped"], self.engine.slot)
         self._set_button_states(running=False)
 
     def _build_config_from_inputs(self) -> Optional[AutoFireConfig]:
@@ -618,8 +923,8 @@ class AutoFireUI:
         output = self.output_var.get().strip().lower()
         window_title = self.window_title_var.get().strip()
 
-        if not all([trigger, output, window_title]):
-            messagebox.showerror("AutoFire", "All fields must be filled.", parent=self.root)
+        if not all([trigger, output]):
+            messagebox.showerror("AutoFire", "Trigger and Output keys must be filled.", parent=self.root)
             return None
         
         try:
@@ -627,28 +932,31 @@ class AutoFireUI:
         except (TypeError, ValueError):
             messagebox.showerror("AutoFire", "Interval must be an integer.", parent=self.root)
             return None
-            
-        return AutoFireConfig(
-            trigger_key=trigger,
-            output_key=output,
-            interval_ms=max(MIN_INTERVAL_MS, min(interval, MAX_INTERVAL_MS)),
-            window_title=window_title,
-            pass_through=bool(self.pass_var.get()),
-            use_sendinput=bool(self.use_sendinput_var.get()),
-            language=self.current_language,
-        )
+        
+        # Update current slot in config
+        if 0 <= self.current_slot_index < len(self.config.slots):
+            slot = self.config.slots[self.current_slot_index]
+            slot.trigger_key = trigger
+            slot.output_key = output
+            slot.interval_ms = max(MIN_INTERVAL_MS, min(interval, MAX_INTERVAL_MS))
+            slot.window_title = window_title
+            slot.pass_through = bool(self.pass_var.get())
+            slot.use_sendinput = bool(self.use_sendinput_var.get())
+        
+        self.config.language = self.current_language
+        return self.config
 
-    def _schedule_status_update(self, state: str, config: AutoFireConfig) -> None:
-        self.root.after(0, self._update_status_display, state, config)
+    def _schedule_status_update(self, state: str, slot: AutoFireSlot) -> None:
+        self.root.after(0, self._update_status_display, state, slot)
 
-    def _immediate_status_update(self, state: str, config: AutoFireConfig) -> None:
+    def _immediate_status_update(self, state: str, slot: AutoFireSlot) -> None:
         """A thread-safe method for immediate status updates from errors in background threads."""
         # Directly set the internal Tkinter variable value without using .set()
         # This bypasses the Tk event loop and avoids blocking from background threads
-        self.status_var._value = f"{config.formatted()} [{state}]"
+        self.status_var._value = f"{slot.formatted()} [{state}]"
 
-    def _update_status_display(self, state: str, config: AutoFireConfig) -> None:
-        self.status_var.set(f"{config.formatted()} [{state}]")
+    def _update_status_display(self, state: str, slot: AutoFireSlot) -> None:
+        self.status_var.set(f"{slot.formatted()} [{state}]")
 
     def _set_button_states(self, running: bool) -> None:
         start_state = tk.DISABLED if running else tk.NORMAL
