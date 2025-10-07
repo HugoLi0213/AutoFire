@@ -2,7 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta na                <div class="feature">
+                    <h3>Multi-Language UI</h3>
+                    <p>One-click language switching between English and 繁體中文 (Traditional Chinese)</p>
+                </div>
+
+                <div class="feature">
+                    <h3>User-Friendly Interface</h3>
+                    <p>Improved UI with clear labels, emoji icons, and helpful guides. Technical jargon replaced with plain language for easier understanding (e.g., "Mix Mode" instead of "pass-through").</p>
+                </div>
+
+                <div class="feature">
+                    <h3>Window Selection</h3>wport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="AutoFire - Windows keyboard automation tool with dual input modes. For educational purposes only.">
     <meta name="keywords" content="keyboard automation, input simulation, Windows API, SendInput, PostMessage, DirectInput">
     <meta name="author" content="Hugo">
@@ -79,7 +90,7 @@
 
                 <div class="feature">
                     <h3>Multi-Language UI</h3>
-                    <p>One-click language switching between English, 繁體中文, and 简体中文</p>
+                    <p>One-click language switching between English and 繁體中文 (Traditional Chinese)</p>
                 </div>
 
                 <div class="feature">
@@ -152,9 +163,15 @@
         <div class="container">
             <h2>Download</h2>
             <div class="download-info">
-                <h3>AutoFire v2.0.0</h3>
+                <h3>AutoFire v2.1.0</h3>
                 <p>Release Date: October 7, 2025</p>
-                <p>New: Multi-slot configuration support! Configure multiple trigger/output pairs simultaneously.</p>
+                <p><strong>What's New:</strong></p>
+                <ul>
+                    <li>✨ Improved UI with clearer labels and emoji icons for better clarity</li>
+                    <li>⚡ Multi-slot configuration - Run multiple trigger/output pairs simultaneously</li>
+                    <li>💡 Helpful guide text to explain functionality</li>
+                    <li>🔓 Simplified terminology ("Mix Mode", "Hardware Mode", etc.)</li>
+                </ul>
                 <p>Standalone EXE file - no installation required</p>
                 
                 <div class="buttons">
@@ -167,11 +184,12 @@
                     <ol>
                         <li>Download the latest release from GitHub</li>
                         <li>Extract the ZIP file</li>
-                        <li>Run <code>python autofire.py --ui</code> with administrator rights</li>
-                        <li>Click "Add Slot" to add trigger/output key pairs</li>
-                        <li>Configure each slot with desired settings</li>
-                        <li>Click "Apply & Save" to activate your configuration</li>
-                        <li>Hold any trigger key to start automation</li>
+                        <li>Run <code>python autofire_ui.py</code> with administrator rights</li>
+                        <li>Click "➕ Add New" to create trigger/output key pairs</li>
+                        <li>Configure each slot: Press This Key ▼ → To Fire This Key ▶</li>
+                        <li>Enable/disable slots with "✓ Active" checkbox</li>
+                        <li>Click "▶ START" to activate all enabled slots</li>
+                        <li>Hold any trigger key to start auto-firing!</li>
                     </ol>
                 </div>
             </div>
