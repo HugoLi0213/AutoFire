@@ -227,7 +227,7 @@ This project is provided as-is for educational and learning purposes. The author
 - ✅ Respect software Terms of Service
 - ✅ Use responsibly and ethically
 - ⚠️ Accept all risks associated with use
-
+In the future, we can develop more marco apps similar to razer so that more different keyboards can be used.
 ---
 
 ## � Additional Resources
